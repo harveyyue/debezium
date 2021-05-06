@@ -517,6 +517,14 @@ public abstract class RelationalDatabaseConnectorConfig extends CommonConnectorC
                     + "The default is 'false'.")
             .withDefault(false);
 
+    public static final Field CORRESPONDING_SCHEMA_AND_RECORD_CHANGES = Field.create("corresponding.schema.and.record.changes")
+            .withDescription("Corresponding database schema and table record changes")
+            .withType(Type.BOOLEAN)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("Whether the connector should publish all changes including schema in the table to a Kafka topic")
+            .withDefault(false);
+
     public static final Field MASK_COLUMN_WITH_HASH = Field.create("column.mask.hash.([^.]+).with.salt.(.+)")
             .withDisplayName("Mask Columns Using Hash and Salt")
             .withType(Type.STRING)

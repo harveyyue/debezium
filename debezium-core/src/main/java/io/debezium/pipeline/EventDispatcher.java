@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline;
 
+import static io.debezium.relational.RelationalDatabaseConnectorConfig.CORRESPONDING_SCHEMA_AND_RECORD_CHANGES;
+
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -41,6 +43,7 @@ import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.pipeline.spi.SchemaChangeEventEmitter;
 import io.debezium.pipeline.txmetadata.TransactionMonitor;
+import io.debezium.relational.TableId;
 import io.debezium.relational.history.ConnectTableChangeSerializer;
 import io.debezium.relational.history.HistoryRecord.Fields;
 import io.debezium.relational.history.TableChanges.TableChangesSerializer;
@@ -517,10 +520,16 @@ public class EventDispatcher<T extends DataCollectionId> {
     }
 
     private final class SchemaChangeEventReceiver implements SchemaChangeEventEmitter.Receiver {
+        private boolean withSchemaAndRecord = connectorConfig.getConfig().getBoolean(CORRESPONDING_SCHEMA_AND_RECORD_CHANGES);
 
         private Struct schemaChangeRecordKey(SchemaChangeEvent event) {
             Struct result = new Struct(schemaChangeKeySchema);
-            result.put(Fields.DATABASE_NAME, event.getDatabase());
+            if (withSchemaAndRecord) {
+                result.put(Fields.DATABASE_NAME, tableId(event).identifier());
+            }
+            else {
+                result.put(Fields.DATABASE_NAME, event.getDatabase());
+            }
             return result;
         }
 
@@ -539,14 +548,32 @@ public class EventDispatcher<T extends DataCollectionId> {
             historizedSchema.applySchemaChange(event);
 
             if (connectorConfig.isSchemaChangesHistoryEnabled()) {
-                final String topicName = topicSelector.getPrimaryTopic();
-                final Integer partition = 0;
-                final Struct key = schemaChangeRecordKey(event);
-                final Struct value = schemaChangeRecordValue(event);
-                final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
-                        schemaChangeKeySchema, key, schemaChangeValueSchema, value);
-                enqueueSchemaChangeMessage(record);
+                if (withSchemaAndRecord) {
+                    TableId tableId = tableId(event);
+                    if (tableId.identifier() != null || tableId.identifier().length() > 0) {
+                        enqueueSchemaChangeMessage(sourceRecord(event, topicSelector.topicNameFor((T) tableId)));
+                    }
+                    else {
+                        LOGGER.warn("Ignore the schema change event {}", event);
+                    }
+                }
+                else {
+                    enqueueSchemaChangeMessage(sourceRecord(event, topicSelector.getPrimaryTopic()));
+                }
             }
+        }
+
+        private TableId tableId(SchemaChangeEvent event) {
+            return event.getTables().isEmpty() ? new TableId(event.getDatabase(), null, event.getDatabase()) : event.getTables().iterator().next().id();
+        }
+
+        private SourceRecord sourceRecord(SchemaChangeEvent event, String topicName) {
+            final Integer partition = 0;
+            final Struct key = schemaChangeRecordKey(event);
+            final Struct value = schemaChangeRecordValue(event);
+            final SourceRecord record = new SourceRecord(event.getPartition(), event.getOffset(), topicName, partition,
+                    schemaChangeKeySchema, key, schemaChangeValueSchema, value);
+            return record;
         }
     }
 
