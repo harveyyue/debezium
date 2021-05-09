@@ -18,11 +18,16 @@ import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.OffsetTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAdjuster;
 import java.util.Base64;
 import java.util.Base64.Encoder;
@@ -96,10 +101,12 @@ public class JdbcValueConverters implements ValueConverterProvider {
     private final String fallbackTimeWithTimeZone;
     protected final boolean adaptiveTimePrecisionMode;
     protected final boolean adaptiveTimeMicrosecondsPrecisionMode;
+    protected final boolean plainTimePrecisionMode;
     protected final DecimalMode decimalMode;
     private final TemporalAdjuster adjuster;
     protected final BigIntUnsignedMode bigIntUnsignedMode;
     protected final BinaryHandlingMode binaryMode;
+    protected final DateTimeFormatter defaultDatetimeFormatter;
 
     /**
      * Create a new instance that always uses UTC for the default time zone when converting values without timezone information
@@ -131,6 +138,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
         this.defaultOffset = defaultOffset != null ? defaultOffset : ZoneOffset.UTC;
         this.adaptiveTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE);
         this.adaptiveTimeMicrosecondsPrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.ADAPTIVE_TIME_MICROSECONDS);
+        this.plainTimePrecisionMode = temporalPrecisionMode.equals(TemporalPrecisionMode.PLAIN);
         this.decimalMode = decimalMode != null ? decimalMode : DecimalMode.PRECISE;
         this.adjuster = adjuster;
         this.bigIntUnsignedMode = bigIntUnsignedMode != null ? bigIntUnsignedMode : BigIntUnsignedMode.PRECISE;
@@ -144,6 +152,7 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 OffsetTime.of(LocalTime.MIDNIGHT, defaultOffset),
                 defaultOffset,
                 adjuster);
+        this.defaultDatetimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.s");
     }
 
     @Override
@@ -216,11 +225,17 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 return Xml.builder();
             // Date and time values
             case Types.DATE:
+                if (plainTimePrecisionMode) {
+                    return SchemaBuilder.string();
+                }
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     return Date.builder();
                 }
                 return org.apache.kafka.connect.data.Date.builder();
             case Types.TIME:
+                if (plainTimePrecisionMode) {
+                    return SchemaBuilder.string();
+                }
                 if (adaptiveTimeMicrosecondsPrecisionMode) {
                     return MicroTime.builder();
                 }
@@ -235,6 +250,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
                 }
                 return org.apache.kafka.connect.data.Time.builder();
             case Types.TIMESTAMP:
+                if (plainTimePrecisionMode) {
+                    return SchemaBuilder.string();
+                }
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     if (getTimePrecision(column) <= 3) {
                         return Timestamp.builder();
@@ -248,6 +266,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.TIME_WITH_TIMEZONE:
                 return ZonedTime.builder();
             case Types.TIMESTAMP_WITH_TIMEZONE:
+                if (plainTimePrecisionMode) {
+                    return SchemaBuilder.string();
+                }
                 return ZonedTimestamp.builder();
 
             // Other types ...
@@ -323,6 +344,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
 
             // Date and time values
             case Types.DATE:
+                if (plainTimePrecisionMode) {
+                    return (data) -> convertTemporalToString(column, fieldDefn, data);
+                }
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     return (data) -> convertDateToEpochDays(column, fieldDefn, data);
                 }
@@ -330,6 +354,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.TIME:
                 return (data) -> convertTime(column, fieldDefn, data);
             case Types.TIMESTAMP:
+                if (plainTimePrecisionMode) {
+                    return data -> convertTemporalToString(column, fieldDefn, data);
+                }
                 if (adaptiveTimePrecisionMode || adaptiveTimeMicrosecondsPrecisionMode) {
                     if (getTimePrecision(column) <= 3) {
                         return data -> convertTimestampToEpochMillis(column, fieldDefn, data);
@@ -343,6 +370,9 @@ public class JdbcValueConverters implements ValueConverterProvider {
             case Types.TIME_WITH_TIMEZONE:
                 return (data) -> convertTimeWithZone(column, fieldDefn, data);
             case Types.TIMESTAMP_WITH_TIMEZONE:
+                if (plainTimePrecisionMode) {
+                    return data -> convertTemporalToString(column, fieldDefn, data);
+                }
                 return (data) -> convertTimestampWithZone(column, fieldDefn, data);
 
             // Other types ...
@@ -1298,6 +1328,42 @@ public class JdbcValueConverters implements ValueConverterProvider {
         logger.trace("Callback is: {}", callback);
         logger.trace("Value from ResultReceiver: {}", r);
         return r.hasReceived() ? r.get() : handleUnknownData(column, fieldDefn, data);
+    }
+
+    protected Object convertTemporalToString(Column column, Field fieldDefn, Object data) {
+        return convertValue(column, fieldDefn, data, "", (r) -> {
+            if (data instanceof byte[]) {
+                // Decode the binary representation using the given character encoding ...
+                r.deliver(new String((byte[]) data, StandardCharsets.UTF_8));
+            }
+            else if (data instanceof String) {
+                r.deliver(data);
+            }
+            else if (data instanceof Duration) {
+                Duration duration = (Duration) data;
+                long seconds = duration.getSeconds();
+                int minutes = (int) ((seconds % 3600) / 60);
+                String time = String.format("%02d:%02d:%02d", duration.toHours(), minutes, seconds % 60);
+                r.deliver(time);
+            }
+            else if (data instanceof LocalDate) {
+                r.deliver(((LocalDate) data).toString());
+            }
+            else if (data instanceof LocalDateTime) {
+                r.deliver(((LocalDateTime) data).format(defaultDatetimeFormatter));
+            }
+            else if (data instanceof ZonedDateTime) {
+                r.deliver(((ZonedDateTime) data).withZoneSameInstant(ZoneId.systemDefault())
+                        .format(defaultDatetimeFormatter));
+            }
+            else if (data instanceof java.sql.Timestamp) { // for column default value
+                try {
+                    r.deliver(ZonedTimestamp.toIsoString(data, defaultOffset, adjuster));
+                }
+                catch (IllegalArgumentException e) {
+                }
+            }
+        });
     }
 
     private boolean supportsLargeTimeValues() {

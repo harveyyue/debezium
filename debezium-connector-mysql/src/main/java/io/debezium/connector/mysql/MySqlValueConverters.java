@@ -311,10 +311,16 @@ public class MySqlValueConverters extends JdbcValueConverters {
                 logger.warn("Using UTF-8 charset by default for column without charset: {}", column);
                 return (data) -> convertString(column, fieldDefn, StandardCharsets.UTF_8, data);
             case Types.TIME:
+                if (plainTimePrecisionMode) {
+                    return data -> convertTemporalToString(column, fieldDefn, data);
+                }
                 if (adaptiveTimeMicrosecondsPrecisionMode) {
                     return data -> convertDurationToMicroseconds(column, fieldDefn, data);
                 }
             case Types.TIMESTAMP:
+                if (plainTimePrecisionMode) {
+                    return data -> convertTemporalToString(column, fieldDefn, data);
+                }
                 return ((ValueConverter) (data -> convertTimestampToLocalDateTime(column, fieldDefn, data))).and(super.converter(column, fieldDefn));
             default:
                 break;

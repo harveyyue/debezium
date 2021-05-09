@@ -28,7 +28,12 @@ public enum TemporalPrecisionMode implements EnumeratedValue {
      * Represent time and date values using Kafka Connect {@link org.apache.kafka.connect.data} logical types, which always
      * have millisecond precision.
      */
-    CONNECT("connect");
+    CONNECT("connect"),
+
+    /**
+     * Represent time and date values based upon the resolution in the database, using string semantic types.
+     */
+    PLAIN("plain");
 
     private final String value;
 
