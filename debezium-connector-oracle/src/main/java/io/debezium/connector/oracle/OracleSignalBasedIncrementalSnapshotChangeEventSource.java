@@ -15,6 +15,7 @@ import io.debezium.pipeline.source.snapshot.incremental.IncrementalSnapshotConte
 import io.debezium.pipeline.source.snapshot.incremental.SignalBasedIncrementalSnapshotChangeEventSource;
 import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
+import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
@@ -73,5 +74,11 @@ public class OracleSignalBasedIncrementalSnapshotChangeEventSource extends Signa
         catch (SQLException e) {
             throw new DebeziumException("Failed to close snapshot connection", e);
         }
+    }
+
+    @Override
+    protected KeyMapper getKeyMapper() {
+        KeyMapper keyMapper = ((OracleConnectorConfig) connectorConfig).getKeyMapper();
+        return keyMapper == null ? super.getKeyMapper() : keyMapper;
     }
 }

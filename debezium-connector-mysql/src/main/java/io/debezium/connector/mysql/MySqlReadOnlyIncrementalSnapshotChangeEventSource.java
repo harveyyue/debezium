@@ -23,6 +23,7 @@ import io.debezium.pipeline.source.spi.DataChangeEventListener;
 import io.debezium.pipeline.source.spi.SnapshotProgressListener;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.relational.Key.KeyMapper;
 import io.debezium.schema.DataCollectionId;
 import io.debezium.schema.DatabaseSchema;
 import io.debezium.util.Clock;
@@ -222,5 +223,11 @@ public class MySqlReadOnlyIncrementalSnapshotChangeEventSource<T extends DataCol
 
     private MySqlReadOnlyIncrementalSnapshotContext<T> getContext() {
         return (MySqlReadOnlyIncrementalSnapshotContext<T>) context;
+    }
+
+    @Override
+    protected KeyMapper getKeyMapper() {
+        KeyMapper keyMapper = ((MySqlConnectorConfig) connectorConfig).getKeyMapper();
+        return keyMapper == null ? super.getKeyMapper() : keyMapper;
     }
 }

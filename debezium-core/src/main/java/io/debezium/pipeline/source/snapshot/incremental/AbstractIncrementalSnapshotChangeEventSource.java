@@ -31,6 +31,7 @@ import io.debezium.pipeline.spi.ChangeRecordEmitter;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.Column;
+import io.debezium.relational.Key.KeyMapper;
 import io.debezium.relational.RelationalDatabaseSchema;
 import io.debezium.relational.RelationalSnapshotChangeEventSource;
 import io.debezium.relational.SnapshotChangeRecordEmitter;
@@ -53,7 +54,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIncrementalSnapshotChangeEventSource.class);
 
-    private final CommonConnectorConfig connectorConfig;
+    protected final CommonConnectorConfig connectorConfig;
     private final Clock clock;
     private final RelationalDatabaseSchema databaseSchema;
     private final SnapshotProgressListener progressListener;
@@ -154,7 +155,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
             addLowerBound(table, sql);
             condition = sql.toString();
         }
-        final String orderBy = table.primaryKeyColumns().stream()
+        final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
                 .map(Column::name)
                 .collect(Collectors.joining(", "));
         return jdbcConnection.buildSelectWithRowLimits(table.id(),
@@ -174,7 +175,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         // For four columns
         // (k1 > ?) OR (k1 = ? AND k2 > ?) OR (k1 = ? AND k2 = ? AND k3 > ?) OR (k1 = ? AND k2 = ? AND k3 = ? AND k4 > ?)
         // etc.
-        final List<Column> pkColumns = table.primaryKeyColumns();
+        final List<Column> pkColumns = getKeyMapper().getKeyKolumns(table);
         if (pkColumns.size() > 1) {
             sql.append('(');
         }
@@ -200,7 +201,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     }
 
     protected String buildMaxPrimaryKeyQuery(Table table) {
-        final String orderBy = table.primaryKeyColumns().stream()
+        final String orderBy = getKeyMapper().getKeyKolumns(table).stream()
                 .map(Column::name)
                 .collect(Collectors.joining(" DESC, ")) + " DESC";
         return jdbcConnection.buildSelectWithRowLimits(table.id(), 1, "*", Optional.empty(), orderBy);
@@ -251,7 +252,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
                     nextDataCollection();
                     continue;
                 }
-                if (currentTable.primaryKeyColumns().isEmpty()) {
+                if (getKeyMapper().getKeyKolumns(currentTable).isEmpty()) {
                     LOGGER.warn("Incremental snapshot for table '{}' skipped cause the table has no primary keys", currentTableId);
                     nextDataCollection();
                     continue;
@@ -321,7 +322,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
     }
 
     protected void addKeyColumnsToCondition(Table table, StringBuilder sql, String predicate) {
-        for (Iterator<Column> i = table.primaryKeyColumns().iterator(); i.hasNext();) {
+        for (Iterator<Column> i = getKeyMapper().getKeyKolumns(table).iterator(); i.hasNext();) {
             final Column key = i.next();
             sql.append(key.name()).append(predicate);
             if (i.hasNext()) {
@@ -433,7 +434,7 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
         if (row == null) {
             return null;
         }
-        final List<Column> keyColumns = currentTable.primaryKeyColumns();
+        final List<Column> keyColumns = getKeyMapper().getKeyKolumns(currentTable);
         final Object[] key = new Object[keyColumns.size()];
         for (int i = 0; i < keyColumns.size(); i++) {
             key[i] = row[keyColumns.get(i).position() - 1];
@@ -462,5 +463,9 @@ public abstract class AbstractIncrementalSnapshotChangeEventSource<T extends Dat
 
     protected void postIncrementalSnapshotCompleted() {
         // no-op
+    }
+
+    protected KeyMapper getKeyMapper() {
+        return table -> table.primaryKeyColumns();
     }
 }
