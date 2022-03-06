@@ -5,10 +5,12 @@
  */
 package io.debezium.connector.mysql;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 import com.github.shyiko.mysql.binlog.BinaryLogClient;
 import com.github.shyiko.mysql.binlog.jmx.BinaryLogClientStatistics;
@@ -154,8 +156,8 @@ public class MySqlStreamingChangeEventSourceMetrics extends DefaultStreamingChan
     }
 
     @Override
-    public String[] getMonitoredTables() {
-        return schema.capturedTablesAsStringArray();
+    public Map<String, Integer> getMonitoredTables() {
+        return Arrays.stream(schema.capturedTablesAsStringArray()).collect(Collectors.toMap(f -> f, f -> 1));
     }
 
     @Override

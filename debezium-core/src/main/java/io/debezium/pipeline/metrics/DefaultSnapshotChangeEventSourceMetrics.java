@@ -5,7 +5,10 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -69,8 +72,8 @@ public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extend
      */
     @Override
     @Deprecated
-    public String[] getMonitoredTables() {
-        return snapshotMeter.getCapturedTables();
+    public Map<String, Integer> getMonitoredTables() {
+        return Arrays.stream(snapshotMeter.getCapturedTables()).collect(Collectors.toMap(f -> f, f -> 1));
     }
 
     @Override

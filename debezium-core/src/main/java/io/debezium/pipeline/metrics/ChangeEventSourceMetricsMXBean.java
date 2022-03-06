@@ -5,6 +5,8 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Map;
+
 import io.debezium.pipeline.metrics.traits.CommonEventMetricsMXBean;
 import io.debezium.pipeline.metrics.traits.QueueMetricsMXBean;
 import io.debezium.pipeline.metrics.traits.SchemaMetricsMXBean;
@@ -22,7 +24,7 @@ public interface ChangeEventSourceMetricsMXBean extends CommonEventMetricsMXBean
      * Scheduled for removal in a future release.
      */
     @Deprecated
-    String[] getMonitoredTables();
+    Map<String, Integer> getMonitoredTables();
 
     void reset();
 }

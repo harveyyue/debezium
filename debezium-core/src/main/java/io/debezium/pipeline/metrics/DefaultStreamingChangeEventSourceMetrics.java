@@ -5,7 +5,9 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 
@@ -51,8 +53,8 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
      */
     @Override
     @Deprecated
-    public String[] getMonitoredTables() {
-        return streamingMeter.getCapturedTables();
+    public Map<String, Integer> getMonitoredTables() {
+        return Arrays.stream(streamingMeter.getCapturedTables()).collect(Collectors.toMap(f -> f, f -> 1));
     }
 
     @Override
