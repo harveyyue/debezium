@@ -153,6 +153,13 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
         return databaseTables;
     }
 
+    public boolean compareOffsets(TableId tableId) {
+        if (databaseTables().forTableOffset(tableId) == null) {
+            return true;
+        }
+        return currentOffset().compareTo(databaseTables().forTableOffset(tableId)) > 0 ? true : false;
+    }
+
     /**
      * Returns a data type resolver component.
      *

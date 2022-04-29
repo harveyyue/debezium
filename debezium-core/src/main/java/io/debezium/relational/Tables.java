@@ -5,6 +5,7 @@
  */
 package io.debezium.relational;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -244,6 +245,10 @@ public final class Tables {
      * @return the previous table definition, or null if there was no prior table definition
      */
     public Table renameTable(TableId existingTableId, TableId newTableId) {
+       return renameTable(existingTableId, newTableId, null);
+    }
+
+    public Table renameTable(TableId existingTableId, TableId newTableId, String offset) {
         return lock.write(() -> {
             Table existing = forTable(existingTableId);
             if (existing == null) {
@@ -256,8 +261,8 @@ public final class Tables {
                 return tablesByTableId.put(updated.id(), updated);
             }
             finally {
-                changes.add(existingTableId);
-                changes.add(updated.id());
+                changes.add(existingTableId, offset);
+                changes.add(updated.id(), offset);
             }
         });
     }
@@ -318,6 +323,10 @@ public final class Tables {
      */
     public Table forTable(String catalogName, String schemaName, String tableName) {
         return forTable(new TableId(catalogName, schemaName, tableName));
+    }
+
+    public String forTableOffset(TableId tableId) {
+        return lock.read(() -> changes.value(tableId));
     }
 
     /**
@@ -502,14 +511,24 @@ public final class Tables {
 
         private final boolean tableIdCaseInsensitive;
         private final Set<TableId> values;
+        private final Map<TableId, String> renameValues;
 
         public TableIds(boolean tableIdCaseInsensitive) {
             this.tableIdCaseInsensitive = tableIdCaseInsensitive;
             this.values = new HashSet<>();
+            this.renameValues = new HashMap<>();
         }
 
         public void add(TableId tableId) {
             values.add(toLowerCaseIfNeeded(tableId));
+        }
+
+        public void add(TableId tableId, String offset) {
+            renameValues.put(toLowerCaseIfNeeded(tableId), offset);
+        }
+
+        public String value(TableId tableId) {
+            return renameValues.get(tableId);
         }
 
         public Set<TableId> toSet() {
@@ -518,6 +537,7 @@ public final class Tables {
 
         public void clear() {
             values.clear();
+            renameValues.clear();
         }
 
         private TableId toLowerCaseIfNeeded(TableId tableId) {

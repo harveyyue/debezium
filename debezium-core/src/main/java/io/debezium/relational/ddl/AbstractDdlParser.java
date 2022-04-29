@@ -33,6 +33,7 @@ public abstract class AbstractDdlParser implements DdlParser {
 
     protected final Logger logger = LoggerFactory.getLogger(getClass());
     private String currentSchema = null;
+    private String currentOffset = null;
 
     /**
      * Create a new parser.
@@ -60,6 +61,11 @@ public abstract class AbstractDdlParser implements DdlParser {
     }
 
     @Override
+    public void setCurrentOffset(String offset) {
+        this.currentOffset = offset;
+    }
+
+    @Override
     public DdlChanges getDdlChanges() {
         return ddlChanges;
     }
@@ -78,6 +84,10 @@ public abstract class AbstractDdlParser implements DdlParser {
      */
     public String currentSchema() {
         return currentSchema;
+    }
+
+    public String currentOffset() {
+        return currentOffset;
     }
 
     /**

@@ -198,6 +198,11 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         return parseDdl(partition, ddlStatements, databaseName, offset, sourceTime, false);
     }
 
+    private String generateOffset(String fileId, long pos) {
+        // String fileNo = String.format("%010d", Integer.parseInt(fileId.substring(fileId.lastIndexOf('.') + 1)));
+        return fileId.concat("." + String.format("%015d", pos));
+    }
+
     private List<SchemaChangeEvent> parseDdl(MySqlPartition partition, String ddlStatements, String databaseName,
                                              MySqlOffsetContext offset, Instant sourceTime, boolean snapshot) {
         final List<SchemaChangeEvent> schemaChangeEvents = new ArrayList<>(3);
@@ -209,6 +214,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         try {
             this.ddlChanges.reset();
             this.ddlParser.setCurrentSchema(databaseName);
+            this.ddlParser.setCurrentOffset(generateOffset(offset.getSource().binlogFilename(), offset.getSource().binlogPosition()));
             this.ddlParser.parse(ddlStatements, tables());
         }
         catch (ParsingException | MultipleParsingExceptions e) {

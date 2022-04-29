@@ -30,6 +30,8 @@ public interface DdlParser {
 
     void setCurrentDatabase(String databaseName);
 
+    void setCurrentOffset(String offset);
+
     /**
      * Set the name of the current schema.
      *

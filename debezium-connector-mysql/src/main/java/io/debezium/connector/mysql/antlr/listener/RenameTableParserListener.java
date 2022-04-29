@@ -39,7 +39,12 @@ public class RenameTableParserListener extends MySqlParserBaseListener {
         else if (!parser.getTableFilter().isIncluded(oldTable) && parser.getTableFilter().isIncluded(newTable)) {
             LOG.warn("Renaming non-whitelisted table {} to whitelisted table {}, this can lead to schema inconsistency", oldTable, newTable);
         }
-        parser.databaseTables().renameTable(oldTable, newTable);
+        if (parser.compareOffsets(oldTable) || parser.compareOffsets(newTable)) {
+            parser.databaseTables().renameTable(oldTable, newTable, parser.currentOffset());
+        } else {
+            LOG.warn("Skip renaming table ddl with duplicated binlog position, old table: {}, new table: {}, binlog: {}",
+                    oldTable.table(), newTable.table(), parser.currentOffset());
+        }
         parser.signalAlterTable(newTable, oldTable, ctx);
         super.enterRenameTableClause(ctx);
     }
