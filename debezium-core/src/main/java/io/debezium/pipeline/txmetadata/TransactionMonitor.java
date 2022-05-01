@@ -26,7 +26,7 @@ import io.debezium.function.BlockingConsumer;
 import io.debezium.pipeline.source.spi.EventMetadataProvider;
 import io.debezium.pipeline.spi.OffsetContext;
 import io.debezium.pipeline.spi.Partition;
-import io.debezium.schema.DataCollectionId;
+import io.debezium.spi.schema.DataCollectionId;
 import io.debezium.util.SchemaNameAdjuster;
 
 /**
@@ -78,7 +78,8 @@ public class TransactionMonitor {
     private final CommonConnectorConfig connectorConfig;
 
     public TransactionMonitor(CommonConnectorConfig connectorConfig, EventMetadataProvider eventMetadataProvider,
-                              SchemaNameAdjuster schemaNameAdjuster, BlockingConsumer<SourceRecord> sender) {
+                              SchemaNameAdjuster schemaNameAdjuster, BlockingConsumer<SourceRecord> sender,
+                              String topicName) {
         Objects.requireNonNull(eventMetadataProvider);
 
         transactionKeySchema = SchemaBuilder.struct()
@@ -94,7 +95,7 @@ public class TransactionMonitor {
                 .field(DEBEZIUM_TRANSACTION_DATA_COLLECTIONS_KEY, SchemaBuilder.array(EVENT_COUNT_PER_DATA_COLLECTION_SCHEMA).optional().build())
                 .build();
 
-        this.topicName = connectorConfig.getTransactionTopic();
+        this.topicName = topicName;
         this.eventMetadataProvider = eventMetadataProvider;
         this.sender = sender;
         this.connectorConfig = connectorConfig;
