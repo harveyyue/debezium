@@ -5,7 +5,9 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.data.Struct;
 
@@ -48,11 +50,12 @@ public class DefaultStreamingChangeEventSourceMetrics<P extends Partition> exten
     /**
      * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
      * Scheduled for removal in a future release.
+     * As a temporary solution to be compatible with prometheus metrics format.
      */
     @Override
     @Deprecated
-    public String[] getMonitoredTables() {
-        return streamingMeter.getCapturedTables();
+    public Map<String, Integer> getMonitoredTables() {
+        return Arrays.stream(streamingMeter.getCapturedTables()).collect(Collectors.toMap(f -> f, f -> 1));
     }
 
     @Override

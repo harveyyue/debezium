@@ -5,7 +5,10 @@
  */
 package io.debezium.pipeline.metrics;
 
+import java.util.Arrays;
+import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
+import java.util.stream.Collectors;
 
 import io.debezium.annotation.ThreadSafe;
 import io.debezium.connector.base.ChangeEventQueueMetrics;
@@ -66,11 +69,12 @@ public class DefaultSnapshotChangeEventSourceMetrics<P extends Partition> extend
     /**
      * @deprecated Superseded by the 'Captured Tables' metric. Use {@link #getCapturedTables()}.
      * Scheduled for removal in a future release.
+     * As a temporary solution to be compatible with prometheus metrics format.
      */
     @Override
     @Deprecated
-    public String[] getMonitoredTables() {
-        return snapshotMeter.getCapturedTables();
+    public Map<String, Integer> getMonitoredTables() {
+        return Arrays.stream(snapshotMeter.getCapturedTables()).collect(Collectors.toMap(f -> f, f -> 1));
     }
 
     @Override
