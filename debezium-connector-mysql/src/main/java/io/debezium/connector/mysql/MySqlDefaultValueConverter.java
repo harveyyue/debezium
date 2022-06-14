@@ -16,7 +16,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -32,6 +31,7 @@ import io.debezium.annotation.Immutable;
 import io.debezium.relational.Column;
 import io.debezium.relational.DefaultValueConverter;
 import io.debezium.relational.ValueConverter;
+import io.debezium.time.Conversions;
 import io.debezium.util.Collect;
 
 /**
@@ -215,7 +215,7 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         }
 
         try {
-            return LocalDateTime.from(timestampFormat(column.length()).parse(value));
+            return LocalDateTime.from(Conversions.timestampFormat(column.length()).parse(value));
         }
         catch (Exception e) {
             LOGGER.warn("Invalid default value '{}' for datetime column '{}'; {}", value, column.name(), e.getMessage());
@@ -223,7 +223,7 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
                 return null;
             }
             else {
-                return LocalDateTime.from(timestampFormat(column.length()).parse(EPOCH_TIMESTAMP));
+                return LocalDateTime.from(Conversions.timestampFormat(column.length()).parse(EPOCH_TIMESTAMP));
             }
         }
     }
@@ -334,22 +334,6 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
         catch (NumberFormatException ignore) {
             return Boolean.parseBoolean(value);
         }
-    }
-
-    private DateTimeFormatter timestampFormat(int length) {
-        final DateTimeFormatterBuilder dtf = new DateTimeFormatterBuilder()
-                .appendPattern("yyyy-MM-dd")
-                .optionalStart()
-                .appendLiteral(" ")
-                .append(DateTimeFormatter.ISO_LOCAL_TIME)
-                .optionalEnd()
-                .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
-                .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
-                .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0);
-        if (length > 0) {
-            dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, length, true);
-        }
-        return dtf.toFormatter();
     }
 
     /**
