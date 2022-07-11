@@ -7,6 +7,7 @@ package io.debezium.schema;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -34,7 +35,7 @@ public class SchemaChangeEvent {
     private final Set<Table> tables;
     private final SchemaChangeEventType type;
     private final Map<String, ?> partition;
-    private final Map<String, ?> offset;
+    private Map<String, ?> offset;
     private final Struct source;
     private final boolean isFromSnapshot;
     private final Instant timestamp;
@@ -123,6 +124,12 @@ public class SchemaChangeEvent {
 
     public TableChanges getTableChanges() {
         return tableChanges;
+    }
+
+    public void setSequenceId(int sequenceId) {
+        Map<String, Object> offsetNew = new HashMap<>(offset);
+        offsetNew.put("sequence", sequenceId);
+        offset = offsetNew;
     }
 
     @Override

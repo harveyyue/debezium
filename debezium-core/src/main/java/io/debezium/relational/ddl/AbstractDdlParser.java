@@ -170,6 +170,10 @@ public abstract class AbstractDdlParser implements DdlParser {
         signalChangeEvent(new DdlParserListener.TableAlteredEvent(id, previousId, statement, false));
     }
 
+    protected void signalAlterTable(TableId id, TableId previousId, String statement, int sequence) {
+        signalChangeEvent(new DdlParserListener.TableAlteredEvent(id, previousId, statement, false, sequence));
+    }
+
     /**
      * Signal a drop table event to ddl changes listener.
      *

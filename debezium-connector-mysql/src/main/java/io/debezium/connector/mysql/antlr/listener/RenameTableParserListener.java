@@ -24,9 +24,16 @@ public class RenameTableParserListener extends MySqlParserBaseListener {
     private final static Logger LOG = LoggerFactory.getLogger(RenameTableParserListener.class);
 
     private final MySqlAntlrDdlParser parser;
+    private int sequence;
 
     public RenameTableParserListener(MySqlAntlrDdlParser parser) {
         this.parser = parser;
+    }
+
+    @Override
+    public void enterRenameTable(MySqlParser.RenameTableContext ctx) {
+        sequence = 0;
+        super.enterRenameTable(ctx);
     }
 
     @Override
@@ -40,7 +47,7 @@ public class RenameTableParserListener extends MySqlParserBaseListener {
             LOG.warn("Renaming non-whitelisted table {} to whitelisted table {}, this can lead to schema inconsistency", oldTable, newTable);
         }
         parser.databaseTables().renameTable(oldTable, newTable);
-        parser.signalAlterTable(newTable, oldTable, ctx);
+        parser.signalAlterTable(newTable, oldTable, ctx, ++sequence);
         super.enterRenameTableClause(ctx);
     }
 }

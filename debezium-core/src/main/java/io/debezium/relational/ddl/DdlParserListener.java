@@ -128,10 +128,16 @@ public interface DdlParserListener {
     @Immutable
     public static class TableAlteredEvent extends TableEvent {
         private final TableId previousTableId;
+        private final int sequence;
 
         public TableAlteredEvent(TableId tableId, TableId previousTableId, String ddlStatement, boolean isView) {
+            this(tableId, previousTableId, ddlStatement, isView, 0);
+        }
+
+        public TableAlteredEvent(TableId tableId, TableId previousTableId, String ddlStatement, boolean isView, int sequence) {
             super(EventType.ALTER_TABLE, tableId, ddlStatement, isView);
             this.previousTableId = previousTableId;
+            this.sequence = sequence;
         }
 
         /**
@@ -140,6 +146,10 @@ public interface DdlParserListener {
          */
         public TableId previousTableId() {
             return previousTableId;
+        }
+
+        public int getSequence() {
+            return sequence;
         }
 
         @Override

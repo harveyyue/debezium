@@ -249,12 +249,12 @@ public abstract class AntlrDdlParser<L extends Lexer, P extends Parser> extends 
      * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
      * @param ctx        the start of the statement; may not be null
      */
-    public void signalAlterTable(TableId id, TableId previousId, MySqlParser.RenameTableClauseContext ctx) {
+    public void signalAlterTable(TableId id, TableId previousId, MySqlParser.RenameTableClauseContext ctx, int sequence) {
         final RenameTableContext parent = (RenameTableContext) ctx.getParent();
         Interval interval = new Interval(ctx.getParent().start.getStartIndex(),
                 parent.renameTableClause().get(0).start.getStartIndex() - 1);
         String prefix = ctx.getParent().start.getInputStream().getText(interval);
-        signalAlterTable(id, previousId, prefix + getText(ctx));
+        signalAlterTable(id, previousId, prefix + getText(ctx), sequence);
     }
 
     /**

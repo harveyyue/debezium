@@ -302,6 +302,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
                     event.statement(),
                     tableId != null ? tableFor(tableId) : null,
                     ((TableAlteredEvent) event).previousTableId());
+            schemaChangeEvent.setSequenceId(((TableAlteredEvent) event).getSequence());
         }
         else {
             schemaChangeEvent = SchemaChangeEvent.of(
