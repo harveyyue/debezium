@@ -497,3 +497,10 @@ SELECT
     `i`.`id` AS `id`
 FROM (`invoices` `i` JOIN lateral (SELECT MAX(`ip`.`date`) AS `latest_payment` FROM `invoice_payments` `ip`) `ps`);
 #end
+
+-- Create sequence
+#begin
+CREATE SEQUENCE if NOT EXISTS workdb.s2 START=1 CYCLE MINVALUE=10000 MAXVALUE=999999999999;
+CREATE OR REPLACE SEQUENCE if NOT EXISTS s2 START=100 CACHE 1000;
+CREATE SEQUENCE `seq_8b4d1cdf-377e-4021-aef3-f7c9846903fc` INCREMENT BY 1 START WITH 1;
+#end

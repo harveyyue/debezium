@@ -66,3 +66,9 @@ drop function if exists foo;
 drop function bar;
 
 #end
+
+-- Drop sequence
+#begin
+DROP SEQUENCE IF EXISTS /* test comment */ s1, s2;
+DROP SEQUENCE s3;
+#end
