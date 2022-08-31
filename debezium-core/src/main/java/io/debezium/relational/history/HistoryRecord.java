@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import io.debezium.connector.AbstractSourceInfo;
 import io.debezium.document.Array;
 import io.debezium.document.Document;
 import io.debezium.relational.history.TableChanges.TableChangesSerializer;
@@ -105,6 +106,10 @@ public class HistoryRecord {
 
     protected long timestamp() {
         return doc.getLong(Fields.TIMESTAMP);
+    }
+
+    protected boolean isSnapshot() {
+        return position().getBoolean(AbstractSourceInfo.SNAPSHOT_KEY, false);
     }
 
     @Override

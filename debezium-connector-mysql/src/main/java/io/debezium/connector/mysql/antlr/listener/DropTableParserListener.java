@@ -13,6 +13,8 @@ import io.debezium.ddl.parser.mysql.generated.MySqlParser;
 import io.debezium.ddl.parser.mysql.generated.MySqlParserBaseListener;
 import io.debezium.relational.TableId;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Parser listener that is parsing MySQL DROP TABLE statements.
  *
@@ -30,6 +32,7 @@ public class DropTableParserListener extends MySqlParserBaseListener {
     public void enterDropTable(MySqlParser.DropTableContext ctx) {
         Interval interval = new Interval(ctx.start.getStartIndex(), ctx.tables().start.getStartIndex() - 1);
         String prefix = ctx.start.getInputStream().getText(interval);
+        AtomicInteger sequence = new AtomicInteger(0);
         ctx.tables().tableName().forEach(tableNameContext -> {
             TableId tableId = parser.parseQualifiedTableId(tableNameContext.fullId());
             parser.databaseTables().removeTable(tableId);

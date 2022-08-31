@@ -170,6 +170,13 @@ public abstract class AbstractDdlParser implements DdlParser {
         signalChangeEvent(new DdlParserListener.TableAlteredEvent(id, previousId, statement, false));
     }
 
+    /**
+     * Signal an alter table event to ddl changes listener.
+     *
+     * @param id         the table identifier; may not be null
+     * @param previousId the previous name of the view if it was renamed, or null if it was not renamed
+     * @param statement  the DDL statement; may not be null
+     */
     protected void signalAlterTable(TableId id, TableId previousId, String statement, int sequence) {
         signalChangeEvent(new DdlParserListener.TableAlteredEvent(id, previousId, statement, false, sequence));
     }

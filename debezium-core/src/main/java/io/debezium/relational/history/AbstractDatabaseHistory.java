@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Pattern;
@@ -131,11 +132,18 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
             }
             stopPoints.put(srcDocument, new HistoryRecord(source, position, null, null, null, null, null));
         });
+        final AtomicReference<HistoryRecord> lastHistoryRecord = new AtomicReference<>();
 
         recoverRecords(recovered -> {
             listener.onChangeFromHistory(recovered);
             Document srcDocument = recovered.document().getDocument(HistoryRecord.Fields.SOURCE);
             if (stopPoints.containsKey(srcDocument) && comparator.isAtOrBefore(recovered, stopPoints.get(srcDocument))) {
+                if (!recovered.isSnapshot() && lastHistoryRecord.get() != null &&
+                        comparator.isAtOrBefore(recovered, lastHistoryRecord.get())) {
+                    logger.warn("Skipping duplicated schema: {}", recovered.ddl());
+                    return;
+                }
+                lastHistoryRecord.set(recovered);
                 Array tableChanges = recovered.tableChanges();
                 String ddl = recovered.ddl();
 
