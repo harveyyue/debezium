@@ -98,6 +98,7 @@ unit_statement
 
     | comment_on_column
     | comment_on_table
+    | comment_on_materialized
 
     | anonymous_block
 
@@ -2518,6 +2519,10 @@ create_synonym
 
 comment_on_table
     : COMMENT ON TABLE tableview_name IS quoted_string
+    ;
+
+comment_on_materialized
+    : COMMENT ON MATERIALIZED VIEW tableview_name IS quoted_string
     ;
 
 alter_cluster
