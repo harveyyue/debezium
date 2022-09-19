@@ -43,6 +43,7 @@ alter table add_test drop constraint if exists cons;
 -- Alter database
 alter database test default character set = utf8;
 alter schema somedb_name upgrade data directory name;
+alter database test_2 /*!40100 DEFAULT CHARACTER SET utf8mb4 */
 #end
 #begin
 -- Alter event
