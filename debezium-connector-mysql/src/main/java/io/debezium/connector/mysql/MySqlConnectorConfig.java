@@ -961,7 +961,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Duration connectionTimeout;
     private final Predicate<String> gtidSourceFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
-    private final Predicate<String> ddlFilter;
     private final boolean readOnlyConnection;
 
     public MySqlConnectorConfig(Configuration config) {
@@ -994,10 +993,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         final String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
-
-        // Set up the DDL filter
-        final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
-        this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter) : (x -> false);
     }
 
     public boolean useCursorFetch() {
@@ -1180,10 +1175,6 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public static boolean isNotBuiltInTable(TableId id) {
         return !isBuiltInDatabase(id.catalog());
-    }
-
-    public Predicate<String> getDdlFilter() {
-        return ddlFilter;
     }
 
     public boolean isReadOnlyConnection() {

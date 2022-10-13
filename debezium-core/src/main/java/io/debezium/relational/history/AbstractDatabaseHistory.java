@@ -8,9 +8,8 @@ package io.debezium.relational.history;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
 import org.apache.kafka.common.config.ConfigDef.Importance;
@@ -55,7 +54,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
     private HistoryRecordComparator comparator = HistoryRecordComparator.INSTANCE;
     private boolean skipUnparseableDDL;
     private boolean storeOnlyCapturedTablesDdl;
-    private Function<String, Optional<Pattern>> ddlFilter = (x -> Optional.empty());
+    private Predicate<String> ddlFilter = x -> false;
     private DatabaseHistoryListener listener = DatabaseHistoryListener.NOOP;
     private boolean useCatalogBeforeSchema;
     private boolean preferDdl = false;
@@ -72,7 +71,7 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
         this.storeOnlyCapturedTablesDdl = Boolean.valueOf(config.getString(DatabaseHistory.STORE_ONLY_CAPTURED_TABLES_DDL));
 
         final String ddlFilter = config.getString(DatabaseHistory.DDL_FILTER);
-        this.ddlFilter = (ddlFilter != null) ? Predicates.matchedBy(ddlFilter) : this.ddlFilter;
+        this.ddlFilter = (ddlFilter != null) ? Predicates.includes(ddlFilter, Pattern.CASE_INSENSITIVE | Pattern.DOTALL) : (x -> false);
         this.listener = listener;
         this.useCatalogBeforeSchema = useCatalogBeforeSchema;
         this.preferDdl = config.getBoolean(INTERNAL_PREFER_DDL);
@@ -138,9 +137,9 @@ public abstract class AbstractDatabaseHistory implements DatabaseHistory {
                     if (recovered.schemaName() != null) {
                         ddlParser.setCurrentSchema(recovered.schemaName()); // may be null
                     }
-                    Optional<Pattern> filteredBy = ddlFilter.apply(ddl);
-                    if (filteredBy.isPresent()) {
-                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}", ddl, filteredBy.get());
+                    if (ddlFilter.test(ddl)) {
+                        logger.info("a DDL '{}' was filtered out of processing by regular expression '{}", ddl,
+                                config.getString(DatabaseHistory.DDL_FILTER));
                         return;
                     }
                     try {
