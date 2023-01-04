@@ -24,9 +24,11 @@ import java.time.OffsetDateTime;
 import java.time.OffsetTime;
 import java.time.ZoneOffset;
 import java.time.temporal.TemporalAdjuster;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Base64.Encoder;
 import java.util.BitSet;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.connect.data.Field;
@@ -1246,16 +1248,24 @@ public class JdbcValueConverters implements ValueConverterProvider {
     protected Object handleUnknownData(Column column, Field fieldDefn, Object data) {
         Class<?> dataClass = data.getClass();
         String clazzName = dataClass.isArray() ? dataClass.getSimpleName() : dataClass.getName();
+        if (dataClass.isArray() && clazzName.equals("byte[]")) {
+            byte[] bytes = (byte[]) data;
+            List<Integer> temp = new ArrayList<>();
+            for (int i = 0; i < bytes.length; i++) {
+                temp.add((int) bytes[i]);
+            }
+            data = temp;
+        }
         if (column.isOptional() || fieldDefn.schema().isOptional()) {
 
             if (logger.isWarnEnabled()) {
-                logger.warn("Unexpected value for JDBC type {} and column {}: class={}", column.jdbcType(), column,
-                        clazzName); // don't include value in case its sensitive
+                logger.warn("Unexpected value for JDBC type {} and column {}: class={}, data={}", column.jdbcType(), column,
+                        clazzName, data); // don't include value in case its sensitive
             }
             return null;
         }
         throw new IllegalArgumentException("Unexpected value for JDBC type " + column.jdbcType() + " and column " + column +
-                ": class=" + clazzName); // don't include value in case its sensitive
+                ": class=" + clazzName + ", data=" + data); // don't include value in case its sensitive
     }
 
     protected int getTimePrecision(Column column) {
