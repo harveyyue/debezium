@@ -36,7 +36,7 @@ public final class Conversions {
     }
 
     @SuppressWarnings("deprecation")
-    protected static LocalDate toLocalDate(Object obj) {
+    public static LocalDate toLocalDate(Object obj) {
         if (obj == null) {
             return null;
         }
