@@ -21,7 +21,7 @@ public class FieldNameUnderscoreReplacementFunction implements ReplacementFuncti
 
     /**
      * Sanitize column names that are illegal in Avro
-     * Must conform to https://avro.apache.org/docs/1.7.7/spec.html#Names
+     * Must conform to <a href="https://avro.apache.org/docs/1.7.7/spec.html#Names">Names</a>
      * Legal characters are [a-zA-Z_] for the first character and [a-zA-Z0-9_] thereafter.
      */
     @Override

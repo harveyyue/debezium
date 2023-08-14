@@ -124,12 +124,11 @@ public class TableSchemaBuilder {
     public TableSchema create(TopicNamingStrategy topicNamingStrategy, Table table, ColumnNameFilter filter, ColumnMappers mappers, KeyMapper keysMapper) {
         // Build the schemas ...
         final TableId tableId = table.id();
-        final String schemaNamePrefix = topicNamingStrategy.recordSchemaPrefix(tableId);
         final String envelopeSchemaPrefix = topicNamingStrategy.dataChangeTopic(tableId);
         final String envelopSchemaName = Envelope.schemaName(envelopeSchemaPrefix);
-        LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, schemaNamePrefix);
-        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Value"));
-        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(schemaNamePrefix + ".Key"));
+        LOGGER.debug("Mapping table '{}' to schemas under '{}'", tableId, topicNamingStrategy.recordSchemaPrefix(tableId));
+        SchemaBuilder valSchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(topicNamingStrategy.recordValueSchemaName(tableId)));
+        SchemaBuilder keySchemaBuilder = SchemaBuilder.struct().name(schemaNameAdjuster.adjust(topicNamingStrategy.recordKeySchemaName(tableId)));
         AtomicBoolean hasPrimaryKey = new AtomicBoolean(false);
 
         Key tableKey = new Key.Builder(table).customKeyMapper(keysMapper).build();

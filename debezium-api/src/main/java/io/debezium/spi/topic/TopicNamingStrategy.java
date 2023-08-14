@@ -35,11 +35,15 @@ public interface TopicNamingStrategy<I extends DataCollectionId> {
         return dataChangeTopic(id);
     }
 
+    String recordKeySchemaName(I id);
+
+    String recordValueSchemaName(I id);
+
     /**
      * Sanitize the given character whether is a legal character of a Kafka topic name.
      * Legal characters are {@code [a-zA-Z0-9._-]}.
      *
-     * @link https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java
+     * @link <a href="https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/internals/Topic.java">Topic</a>
      */
     String sanitizedTopicName(String topicName);
 

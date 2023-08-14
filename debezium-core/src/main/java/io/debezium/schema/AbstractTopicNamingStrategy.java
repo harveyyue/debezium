@@ -34,6 +34,8 @@ import io.debezium.util.Strings;
 public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> implements TopicNamingStrategy<I> {
     public static final String DEFAULT_HEARTBEAT_TOPIC_PREFIX = "__debezium-heartbeat";
     public static final String DEFAULT_TRANSACTION_TOPIC = "transaction";
+    public static final String SCHEMA_KEY_SUFFIX = "Key";
+    public static final String SCHEMA_VALUE_SUFFIX = "Value";
 
     public static final Field TOPIC_DELIMITER = Field.create("topic.delimiter")
             .withDisplayName("Topic delimiter")
@@ -111,8 +113,8 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
         prefix = config.getString(CommonConnectorConfig.TOPIC_PREFIX);
         assert prefix != null;
         // SqlServer support the multi partition mode
-        multiPartitionMode = props.get(CommonConnectorConfig.MULTI_PARTITION_MODE) == null ? false
-                : Boolean.parseBoolean(props.get(CommonConnectorConfig.MULTI_PARTITION_MODE).toString());
+        multiPartitionMode = props.get(CommonConnectorConfig.MULTI_PARTITION_MODE) != null
+                && Boolean.parseBoolean(props.get(CommonConnectorConfig.MULTI_PARTITION_MODE).toString());
         replacement = ReplacementFunction.UNDERSCORE_REPLACEMENT;
     }
 
@@ -132,6 +134,20 @@ public abstract class AbstractTopicNamingStrategy<I extends DataCollectionId> im
     @Override
     public String transactionTopic() {
         return String.join(delimiter, prefix, transaction);
+    }
+
+    @Override
+    public String recordKeySchemaName(I id) {
+        String schemaPrefix = recordSchemaPrefix(id);
+        return Strings.isNullOrBlank(schemaPrefix) ? SCHEMA_KEY_SUFFIX
+                : String.join(delimiter, schemaPrefix, SCHEMA_KEY_SUFFIX);
+    }
+
+    @Override
+    public String recordValueSchemaName(I id) {
+        String schemaPrefix = recordSchemaPrefix(id);
+        return Strings.isNullOrBlank(schemaPrefix) ? SCHEMA_VALUE_SUFFIX
+                : String.join(delimiter, schemaPrefix, SCHEMA_VALUE_SUFFIX);
     }
 
     @Override
