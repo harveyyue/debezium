@@ -10,12 +10,15 @@ import java.time.Instant;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.TemporalAccessor;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Schema.Type;
+import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.source.SourceRecord;
 
@@ -117,6 +120,35 @@ public class SchemaUtil {
      */
     public static String asDetailedString(SourceRecord record) {
         return new RecordWriter().detailed(true).append(record).toString();
+    }
+
+    /**
+     * Merge schema for JSON arrays which including heterogeneous element
+     */
+    public static Schema mergeSchema(Schema left, Schema right) {
+        if (left == null) {
+            return right;
+        }
+
+        Map<String, Field> fields = new HashMap<>();
+        left.fields().forEach(field -> fields.put(field.name(), field));
+        right.fields().forEach(field -> {
+            Field oldField = fields.get(field.name());
+            if (oldField == null) {
+                fields.put(field.name(), field);
+            }
+            else {
+                if (!Objects.equals(oldField.schema(), field.schema())
+                        && oldField.schema().type() == Schema.Type.BYTES
+                        && field.schema().type() != Schema.Type.BYTES) {
+                    fields.put(field.name(), field);
+                }
+            }
+        });
+
+        SchemaBuilder newBuilder = org.apache.kafka.connect.transforms.util.SchemaUtil.copySchemaBasics(left);
+        fields.forEach((k, v) -> newBuilder.field(k, v.schema()));
+        return newBuilder.build();
     }
 
     private static class RecordWriter {

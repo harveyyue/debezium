@@ -6,12 +6,10 @@
 package io.debezium.transforms.outbox;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
@@ -19,13 +17,13 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
-import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeType;
 import com.fasterxml.jackson.databind.node.NullNode;
 
+import io.debezium.data.SchemaUtil;
 import io.debezium.transforms.outbox.EventRouterConfigDefinition.JsonPayloadNullFieldBehavior;
 
 public class JsonSchemaData {
@@ -98,7 +96,7 @@ public class JsonSchemaData {
             }
             for (Schema element : elementSchemas) {
                 // TODO: need to support nested json object
-                schema = mergeSchema(schema, element);
+                schema = SchemaUtil.mergeSchema(schema, element);
             }
         }
         else {
@@ -109,32 +107,6 @@ public class JsonSchemaData {
         }
 
         return schema;
-    }
-
-    private Schema mergeSchema(Schema left, Schema right) {
-        if (left == null) {
-            return right;
-        }
-
-        Map<String, Field> fields = new HashMap<>();
-        left.fields().forEach(field -> fields.put(field.name(), field));
-        right.fields().forEach(field -> {
-            Field oldField = fields.get(field.name());
-            if (oldField == null) {
-                fields.put(field.name(), field);
-            }
-            else {
-                if (!Objects.equals(oldField.schema(), field.schema())
-                        && oldField.schema().type() == Schema.Type.BYTES
-                        && field.schema().type() != Schema.Type.BYTES) {
-                    fields.put(field.name(), field);
-                }
-            }
-        });
-
-        SchemaBuilder newBuilder = SchemaUtil.copySchemaBasics(left);
-        fields.forEach((k, v) -> newBuilder.field(k, v.schema()));
-        return newBuilder.build();
     }
 
     private JsonNode getFirstArrayElement(ArrayNode array) throws ConnectException {
