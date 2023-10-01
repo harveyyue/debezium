@@ -46,10 +46,13 @@ public class JsonSchemaDataTest {
     @FixFor("DBZ-6910")
     public void shouldCreateCorrectSchemaFromArrayJson() throws Exception {
         String key = "test_arr";
+        SchemaBuilder builder = SchemaBuilder.struct().name("arr");
         // remove description value from array json
         JsonNode testNode = mapper
-                .readTree("[{\"code\":\"100\",\"description\":\"some description\"},{\"code\":\"200\",\"description\":\"another description\"},{\"code\":\"300\"}]");
-        Schema arraySchema = jsonSchemaData.toConnectSchema(key, testNode);
+                .readTree("[{\"code\":\"100\",\"description\":null},{\"code\":\"200\",\"description\":\"another description\"},{\"code\":\"300\"}]");
+        // Schema arraySchema = jsonSchemaData.toConnectSchema(key, testNode);
+        jsonSchemaData.addFieldSchema(key, testNode, builder);
+        Schema arraySchema = builder.build();
 
         assertThat(arraySchema.valueSchema().field("code")).isNotNull();
         assertThat(arraySchema.valueSchema().field("description").schema().type()).isEqualTo(Schema.Type.STRING);
@@ -80,6 +83,10 @@ public class JsonSchemaDataTest {
     @FixFor("DBZ-5475")
     public void failSchemaCheckForArrayWithDifferentNumberTypes() throws Exception {
         JsonNode testNode = mapper.readTree("{\"test\": [1, 2.0, 3.0]}");
+        SchemaBuilder builder = SchemaBuilder.struct().name("xxx");
+        Schema schema2 = jsonSchemaData.toConnectSchema2(builder, testNode);
+
+        Schema arraySchema = builder.build();
 
         RuntimeException expectedException = null;
         try {

@@ -6,10 +6,12 @@
 package io.debezium.transforms.outbox;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.kafka.connect.data.Field;
@@ -79,6 +81,116 @@ public class JsonSchemaData {
             default:
                 return null;
         }
+    }
+
+    public Schema toConnectSchema2(SchemaBuilder builder, JsonNode node) {
+        node.fields().forEachRemaining(entry -> addFieldSchema(entry.getKey(), entry.getValue(), builder));
+        return builder.build();
+    }
+
+    public void addFieldSchema(String key, JsonNode node, SchemaBuilder builder) {
+        switch (node.getNodeType()) {
+            case NULL:
+                if (jsonPayloadNullFieldBehavior.equals(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES)) {
+                    builder.field(key, Schema.OPTIONAL_BYTES_SCHEMA);
+                }
+                else {
+                    builder.field(key, Schema.OPTIONAL_STRING_SCHEMA);
+                }
+                break;
+            case BINARY:
+                builder.field(key, Schema.OPTIONAL_BYTES_SCHEMA);
+                break;
+            case STRING:
+                builder.field(key, Schema.OPTIONAL_STRING_SCHEMA);
+                break;
+            case BOOLEAN:
+                builder.field(key, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+                break;
+            case NUMBER:
+                if (node.isInt()) {
+                    builder.field(key, Schema.OPTIONAL_INT32_SCHEMA);
+                }
+                else if (node.isLong()) {
+                    builder.field(key, Schema.OPTIONAL_INT64_SCHEMA);
+                }
+                else {
+                    builder.field(key, Schema.OPTIONAL_FLOAT64_SCHEMA);
+                }
+                break;
+            case OBJECT:
+                final SchemaBuilder objectSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                node.fields().forEachRemaining(entry -> addFieldSchema(entry.getKey(), entry.getValue(), objectSchemaBuilder));
+                builder.field(key, objectSchemaBuilder.schema());
+                break;
+            case ARRAY:
+                ArrayNode arrayNode = (ArrayNode) node;
+                if (arrayNode.isEmpty()) {
+                    addFieldSchema(key, NullNode.getInstance(), builder);
+                }
+                else {
+                    JsonNode elementNode = getFirstArrayElement(arrayNode);
+                    builder.field(key, SchemaBuilder.array(toConnectSchemaWithCycles(key, arrayNode, elementNode.getNodeType(), builder)));
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    public Schema toConnectSchemaWithCycles(String key, JsonNode value, JsonNodeType elementType, SchemaBuilder builder) {
+        switch (elementType) {
+            case NULL:
+                if (jsonPayloadNullFieldBehavior.equals(JsonPayloadNullFieldBehavior.OPTIONAL_BYTES)) {
+                    return Schema.OPTIONAL_BYTES_SCHEMA;
+                }
+                return Schema.OPTIONAL_STRING_SCHEMA;
+            case BINARY:
+                return Schema.OPTIONAL_BYTES_SCHEMA;
+            case STRING:
+                return Schema.OPTIONAL_STRING_SCHEMA;
+            case BOOLEAN:
+                return Schema.OPTIONAL_BOOLEAN_SCHEMA;
+            case NUMBER:
+                if (value.isInt()) {
+                    return Schema.OPTIONAL_INT32_SCHEMA;
+                }
+                if (value.isLong()) {
+                    return Schema.OPTIONAL_INT64_SCHEMA;
+                }
+                return Schema.OPTIONAL_FLOAT64_SCHEMA;
+            case OBJECT:
+                final SchemaBuilder objectSchemaBuilder = SchemaBuilder.struct().name(builder.name() + "." + key).optional();
+                final Map<String, JsonNodeType> union = new HashMap<>();
+                // Will merge the json schema per array element
+                if (value instanceof ArrayNode) {
+                   value.forEach(node -> addObjectNodeSchema(node, objectSchemaBuilder, union));
+                }
+                else {
+                    addObjectNodeSchema(value, objectSchemaBuilder, union);
+                }
+                return objectSchemaBuilder.build();
+            case ARRAY:
+                ArrayNode arrayNode = (ArrayNode) value;
+                JsonNodeType subJsonNodeType = arrayNode.get(0).getNodeType();
+                return toConnectSchemaWithCycles(key, arrayNode.get(0), subJsonNodeType, builder);
+            default:
+                throw new ConnectException(String.format("Array '%s' has unrecognized member schema.", elementType));
+        }
+    }
+
+    private void addObjectNodeSchema(JsonNode node, SchemaBuilder builder, Map<String, JsonNodeType> union) {
+        node.fields().forEachRemaining(entry -> {
+            JsonNodeType prevType = union.putIfAbsent(entry.getKey(), entry.getValue().getNodeType());
+            if (prevType == null) {
+                addFieldSchema(entry.getKey(), entry.getValue(), builder);
+            }
+            else {
+                if (!Objects.equals(node.getNodeType(), prevType)) {
+                }
+                // check type
+            }
+        });
     }
 
     private Schema toConnectSchemaWithCycles(String key, ArrayNode array) throws ConnectException {
