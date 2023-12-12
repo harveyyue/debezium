@@ -347,7 +347,7 @@ public class MySqlDefaultValueConverter implements DefaultValueConverter {
                 .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
                 .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0);
         if (length > 0) {
-            dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, length, true);
+            dtf.appendFraction(ChronoField.MICRO_OF_SECOND, 0, Math.min(length, 9), true);
         }
         return dtf.toFormatter();
     }
