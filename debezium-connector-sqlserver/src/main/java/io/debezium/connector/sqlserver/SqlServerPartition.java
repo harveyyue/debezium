@@ -15,16 +15,11 @@ import io.debezium.relational.AbstractPartition;
 import io.debezium.util.Collect;
 
 public class SqlServerPartition extends AbstractPartition implements Partition {
-    private static final String SERVER_PARTITION_KEY = "server";
-    private static final String DATABASE_PARTITION_KEY = "database";
-
-    private final String serverName;
     private final Map<String, String> sourcePartition;
     private final int hashCode;
 
     public SqlServerPartition(String serverName, String databaseName) {
-        super(databaseName);
-        this.serverName = serverName;
+        super(serverName, databaseName);
 
         this.sourcePartition = Collect.hashMapOf(SERVER_PARTITION_KEY, serverName, DATABASE_PARTITION_KEY, databaseName);
 

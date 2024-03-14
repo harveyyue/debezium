@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.Map;
 
 import io.debezium.pipeline.spi.Partition;
+import io.debezium.util.Collect;
 import io.debezium.util.LoggingContext;
 
 /**
@@ -17,11 +18,20 @@ import io.debezium.util.LoggingContext;
  * @author vjuranek
  */
 public abstract class AbstractPartition implements Partition {
+    protected static final String SERVER_PARTITION_KEY = "server";
+    protected static final String DATABASE_PARTITION_KEY = "database";
 
+    protected final String serverName;
     protected final String databaseName;
 
-    public AbstractPartition(String databaseName) {
+    public AbstractPartition(String serverName, String databaseName) {
+        this.serverName = serverName;
         this.databaseName = databaseName;
+    }
+
+    @Override
+    public Map<String, String> getSourcePartition() {
+        return Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
     }
 
     @Override

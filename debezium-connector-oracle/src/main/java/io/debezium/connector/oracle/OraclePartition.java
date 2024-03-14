@@ -6,28 +6,17 @@
 package io.debezium.connector.oracle;
 
 import java.util.Collections;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 import io.debezium.pipeline.spi.Partition;
 import io.debezium.relational.AbstractPartition;
-import io.debezium.util.Collect;
 import io.debezium.util.Strings;
 
 public class OraclePartition extends AbstractPartition implements Partition {
-    private static final String SERVER_PARTITION_KEY = "server";
-
-    private final String serverName;
 
     public OraclePartition(String serverName, String databaseName) {
-        super(databaseName);
-        this.serverName = serverName;
-    }
-
-    @Override
-    public Map<String, String> getSourcePartition() {
-        return Collect.hashMapOf(SERVER_PARTITION_KEY, serverName);
+        super(serverName, databaseName);
     }
 
     @Override
