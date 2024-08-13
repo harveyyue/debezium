@@ -265,6 +265,7 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
      *            have been previously processed
      */
     public void setCompletedGtidSet(String gtidSet) {
+        sourceInfo.startGtid(gtidSet);
         if (gtidSet != null && !gtidSet.trim().isEmpty()) {
             // Remove all the newline chars that exist in the GTID set string ...
             String trimmedGtidSet = gtidSet.replaceAll("\n", "").replaceAll("\r", "");
