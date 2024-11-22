@@ -85,6 +85,37 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    public void shouldApplyTidbCreateTable() {
+        String ddl = "CREATE TABLE `tidb_test` (\n" +
+                "  `id` bigint(20) unsigned NOT NULL AUTO_RANDOM(5) COMMENT 'primary key',\n" +
+                "  `account` varchar(200) DEFAULT NULL COMMENT 'account',\n" +
+                "  `token_account` varchar(200) DEFAULT NULL  COMMENT 'token_account',\n" +
+                "  `quantity` varchar(100) DEFAULT NULL COMMENT '金额',\n" +
+                "  `request_id` varchar(100) DEFAULT NULL COMMENT '请求id',\n" +
+                "  `version` bigint(20)  DEFAULT NULL COMMENT '版本',\n" +
+                "  `seer_time` bigint(20)  DEFAULT NULL COMMENT '时间',\n" +
+                "  `created` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,\n" +
+                "  `updated` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                "  `raw_data` longtext DEFAULT NULL COMMENT 'raw data',\n" +
+                "    PRIMARY KEY (`id`,`created`) CLUSTERED,\n" +
+                "  UNIQUE KEY `uni_account_address` (`account`,`token_account`,`version`,`created`)\n" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin COMMENT='bbsol dex持仓数据'\n" +
+                "PARTITION BY RANGE ( UNIX_TIMESTAMP(created) ) (\n" +
+                " PARTITION `p20241028` VALUES LESS THAN (1730160000),\n" +
+                " PARTITION `p20241029` VALUES LESS THAN (1730246400),\n" +
+                " PARTITION `p20241030` VALUES LESS THAN (1730332800),\n" +
+                " PARTITION `p20241031` VALUES LESS THAN (1730419200),\n" +
+                " PARTITION `p20241101` VALUES LESS THAN (1730505600),\n" +
+                " PARTITION `p20241102` VALUES LESS THAN (1730592000)\n" +
+                ");";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+        assertThat(tables.size()).isEqualTo(1);
+        Table table = tables.forTable(null, null, "tidb_testg");
+        assertThat(table.columnWithName("id").isAutoIncremented()).isTrue();
+    }
+
+    @Test
     @FixFor("DBZ-7251")
     public void shouldApplyCorrectColumnInfoWhenAlterColumnType() {
         String ddl = "CREATE TABLE `test` (\n" +

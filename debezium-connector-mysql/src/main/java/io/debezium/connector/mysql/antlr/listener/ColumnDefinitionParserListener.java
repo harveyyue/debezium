@@ -137,6 +137,13 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     }
 
     @Override
+    public void enterAutoRandomColumnConstraint(MySqlParser.AutoRandomColumnConstraintContext ctx) {
+        columnEditor.autoIncremented(true);
+        columnEditor.generated(true);
+        super.enterAutoRandomColumnConstraint(ctx);
+    }
+
+    @Override
     public void enterSerialDefaultColumnConstraint(MySqlParser.SerialDefaultColumnConstraintContext ctx) {
         serialColumn();
         super.enterSerialDefaultColumnConstraint(ctx);
