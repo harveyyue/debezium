@@ -250,8 +250,8 @@ public final class Tables {
                 return null;
             }
             tablesByTableId.remove(existing.id());
-            TableImpl updated = new TableImpl(newTableId, existing.columns(),
-                    existing.primaryKeyColumnNames(), existing.defaultCharsetName(), existing.comment());
+            TableImpl updated = new TableImpl(newTableId, existing.columns(), existing.primaryKeyColumnNames(),
+                    existing.uniqueKeyColumnNames(), existing.defaultCharsetName(), existing.comment());
             try {
                 return tablesByTableId.put(updated.id(), updated);
             }
@@ -275,8 +275,8 @@ public final class Tables {
             Table existing = tablesByTableId.get(tableId);
             Table updated = changer.apply(existing);
             if (updated != existing) {
-                tablesByTableId.put(tableId, new TableImpl(tableId, updated.columns(),
-                        updated.primaryKeyColumnNames(), updated.defaultCharsetName(), updated.comment()));
+                tablesByTableId.put(tableId, new TableImpl(tableId, updated.columns(), updated.primaryKeyColumnNames(),
+                        updated.uniqueKeyColumnNames(), updated.defaultCharsetName(), updated.comment()));
             }
             changes.add(tableId);
             return existing;

@@ -8,6 +8,7 @@ package io.debezium.relational;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 final class NoOpTableEditorImpl implements TableEditor {
 
@@ -49,6 +50,10 @@ final class NoOpTableEditorImpl implements TableEditor {
         return Collections.emptyList();
     }
 
+    public Map<String, List<String>> uniqueKeyColumnNames() {
+        return Collections.emptyMap();
+    }
+
     @Override
     public TableEditor addColumns(Column... columns) {
         return this;
@@ -76,6 +81,21 @@ final class NoOpTableEditorImpl implements TableEditor {
 
     @Override
     public TableEditor setPrimaryKeyNames(List<String> pkColumnNames) {
+        return this;
+    }
+
+    @Override
+    public TableEditor setUniqueKeyName(String uniqueKeyName, List<String> ukColumnNames) {
+        return this;
+    }
+
+    @Override
+    public TableEditor setUniqueKeyName(String uniqueKeyName, String... ukColumnNames) {
+        return this;
+    }
+
+    @Override
+    public TableEditor setUniqueKeyNames(Map<String, List<String>> ukColumnNames) {
         return this;
     }
 
@@ -143,6 +163,6 @@ final class NoOpTableEditorImpl implements TableEditor {
             throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
         }
         List<Column> columns = new ArrayList<>();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment);
+        return new TableImpl(id, columns, primaryKeyColumnNames(), uniqueKeyColumnNames(), defaultCharsetName, comment);
     }
 }

@@ -325,6 +325,64 @@ public class MySqlAntlrDdlParser extends AntlrDdlParser<MySqlLexer, MySqlParser>
     }
 
     /**
+     * Extract column names for primary key/index from {@link MySqlParser.IndexColumnNamesContext}.
+     *
+     * @param indexColumnNamesContext index column names context.
+     * @param tableEditor editor for table where index is parsed.
+     */
+    public List<String> extractUniqueKeyColumnNames(MySqlParser.IndexColumnNamesContext indexColumnNamesContext, TableEditor tableEditor) {
+        return indexColumnNamesContext.indexColumnName().stream()
+                .map(indexColumnNameContext -> {
+                    String columnName;
+                    if (indexColumnNameContext.uid() != null) {
+                        columnName = parseName(indexColumnNameContext.uid());
+                    }
+                    else {
+                        columnName = withoutQuotes(indexColumnNameContext.STRING_LITERAL().getText());
+                    }
+                    Column column = tableEditor.columnWithName(columnName);
+                    return column != null ? column.name() : columnName;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Parse column names for unique key from {@link MySqlParser.UniqueKeyTableConstraintContext}.
+     *
+     * @param uniqueKeyTableConstraintContext unique key table constrain context.
+     * @param tableEditor editor for table where unique key index is parsed.
+     */
+    public void parseUniqueKeyColumnNames(MySqlParser.UniqueKeyTableConstraintContext uniqueKeyTableConstraintContext, TableEditor tableEditor) {
+        List<String> ukColumnNames = extractUniqueKeyColumnNames(uniqueKeyTableConstraintContext.indexColumnNames(), tableEditor);
+        String uniqueKeyName;
+        if (uniqueKeyTableConstraintContext.index != null) {
+            uniqueKeyName = parseName(uniqueKeyTableConstraintContext.index);
+        }
+        else {
+            uniqueKeyName = ukColumnNames.get(0);
+        }
+        tableEditor.setUniqueKeyName(uniqueKeyName, ukColumnNames);
+    }
+
+    /**
+     * Parse column names for unique key from {@link MySqlParser.AlterByAddUniqueKeyContext}.
+     *
+     * @param alterByAddUniqueKeyContext alter by add unique key context.
+     * @param tableEditor editor for table where unique key index is parsed.
+     */
+    public void parseUniqueKeyColumnNames(MySqlParser.AlterByAddUniqueKeyContext alterByAddUniqueKeyContext, TableEditor tableEditor) {
+        List<String> ukColumnNames = extractUniqueKeyColumnNames(alterByAddUniqueKeyContext.indexColumnNames(), tableEditor);
+        String uniqueKeyName;
+        if (alterByAddUniqueKeyContext.indexName != null) {
+            uniqueKeyName = parseName(alterByAddUniqueKeyContext.indexName);
+        }
+        else {
+            uniqueKeyName = ukColumnNames.get(0);
+        }
+        tableEditor.setUniqueKeyName(uniqueKeyName, ukColumnNames);
+    }
+
+    /**
      * Determine if a table's unique index should be included when parsing relative unique index statement.
      *
      * @param indexColumnNamesContext unique index column names context.

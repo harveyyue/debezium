@@ -100,6 +100,7 @@ public class ColumnDefinitionParserListener extends MySqlParserBaseListener {
     @Override
     public void enterUniqueKeyColumnConstraint(MySqlParser.UniqueKeyColumnConstraintContext ctx) {
         uniqueColumn = true;
+        tableEditor.setUniqueKeyName(columnEditor.name(), columnEditor.name());
         super.enterUniqueKeyColumnConstraint(ctx);
     }
 

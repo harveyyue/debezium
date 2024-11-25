@@ -6,7 +6,9 @@
 package io.debezium.relational;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -40,6 +42,13 @@ public interface Table {
     List<String> primaryKeyColumnNames();
 
     /**
+     * The map of column names that make up the unique keys for this table.
+     *
+     * @return the immutable map of unique key name and column names that make up the unique keys
+     */
+    Map<String, List<String>> uniqueKeyColumnNames();
+
+    /**
      * Get the columns that make up the primary key for this table.
      * @return the immutable list of columns that make up the primary key; never null but possibly empty
      */
@@ -50,6 +59,19 @@ public interface Table {
                 .collect(Collectors.toList());
 
         return Collections.unmodifiableList(pkColumns);
+    }
+
+    /**
+     * Get the columns that make up the unique key for this table.
+     * @return the immutable map of columns that make up the unique key; never null but possibly empty
+     */
+    default Map<String, List<Column>> uniqueKeyColumns() {
+        Map<String, List<Column>> ret = new HashMap<>();
+        uniqueKeyColumnNames()
+                .entrySet()
+                .stream()
+                .forEach(f -> ret.put(f.getKey(), f.getValue().stream().map(this::columnWithName).collect(Collectors.toList())));
+        return Collections.unmodifiableMap(ret);
     }
 
     /**

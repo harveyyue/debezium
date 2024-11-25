@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import io.debezium.annotation.NotThreadSafe;
@@ -80,6 +81,14 @@ public interface TableEditor {
      * @return the list of column names that make up the primary key; never null but possibly empty
      */
     List<String> primaryKeyColumnNames();
+
+    /**
+     * The map of column names that make up the unique key for this table.
+     * instead, the map of unique key names should be defined with {@link #setUniqueKeyName(String, List)}, or {@link #setUniqueKeyNames(Map)}.
+     *
+     * @return the list of column names that make up the primary key; never null but possibly empty
+     */
+    Map<String, List<String>> uniqueKeyColumnNames();
 
     /**
      * Determine whether this table has a primary key.
@@ -194,6 +203,35 @@ public interface TableEditor {
      * @throws IllegalArgumentException if a name does not correspond to an existing column
      */
     TableEditor setPrimaryKeyNames(List<String> pkColumnNames);
+
+    /**
+     * Set the columns that make up this table's unique key.
+     *
+     * @param uniqueKeyName the name of unique key
+     * @param ukColumnNames the names of this tables columns that make up the unique key
+     * @return this editor so callers can chain methods together
+     * @throws IllegalArgumentException if a name does not correspond to an existing column
+     */
+    TableEditor setUniqueKeyName(String uniqueKeyName, List<String> ukColumnNames);
+
+    /**
+     * Set the columns that make up this table's unique key.
+     *
+     * @param uniqueKeyName the name of unique key
+     * @param ukColumnNames the names of this tables columns that make up the unique key
+     * @return this editor so callers can chain methods together
+     * @throws IllegalArgumentException if a name does not correspond to an existing column
+     */
+    TableEditor setUniqueKeyName(String uniqueKeyName, String... ukColumnNames);
+
+    /**
+     * Set the columns that make up this table's unique key.
+     *
+     * @param ukColumnNames the names of this tables columns that make up the unique key
+     * @return this editor so callers can chain methods together
+     * @throws IllegalArgumentException if a name does not correspond to an existing column
+     */
+    TableEditor setUniqueKeyNames(Map<String, List<String>> ukColumnNames);
 
     /**
      * Sets this table's primary key to contain all columns, ensuring that all values are unique within the table.

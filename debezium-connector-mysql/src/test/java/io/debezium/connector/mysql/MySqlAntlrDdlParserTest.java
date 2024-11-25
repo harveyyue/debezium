@@ -116,6 +116,55 @@ public class MySqlAntlrDdlParserTest {
     }
 
     @Test
+    public void shouldProcessUniqueKeysForTable() {
+        String ddl = "CREATE TABLE `tb2` (\n"
+                + "`id` int NOT NULL AUTO_INCREMENT,\n"
+                + "`v1` varchar(255) DEFAULT NULL,\n"
+                + "`v22` int NOT NULL DEFAULT '1',\n"
+                + "`v2` int NULL,\n"
+                + "`v3` int null unique key,\n"
+                + "`v4` int not null,\n"
+                + "`v5` int not null,\n"
+                + "PRIMARY KEY (`id`),\n"
+                + "UNIQUE KEY `ux_v22` (`V22`),\n"
+                + "UNIQUE KEY (`V22`,`v2`)\n"
+                + ") ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci";
+        parser.parse(ddl, tables);
+        assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
+
+        String dropColumnDdl = "alter table tb2 drop column V22";
+        parser.parse(dropColumnDdl, tables);
+
+        String createUniqueIndexDdl = "create unique index ux_v1 on tb2 (v1)";
+        parser.parse(createUniqueIndexDdl, tables);
+
+        String dropIndexDdl = "alter table tb2 drop index ux_v1";
+        parser.parse(dropIndexDdl, tables);
+
+        String alterAddIndexDdl = "alter table tb2 add unique index ux_v4(v4)";
+        parser.parse(alterAddIndexDdl, tables);
+        String alterAddIndexDdl2 = "alter table tb2 add unique index ux_v4_v5 (v4, v5)";
+        parser.parse(alterAddIndexDdl2, tables);
+
+        String alterRenameIndexDdl = "alter table tb2 rename index ux_v4 to ux_v4_new";
+        parser.parse(alterRenameIndexDdl, tables);
+
+        String alterRenameColumnNameDdl = "alter table tb2 rename column v4 to v4_new";
+        parser.parse(alterRenameColumnNameDdl, tables);
+
+        Table table = tables.forTable(null, null, "tb2");
+        assertThat(table.uniqueKeyColumnNames().size()).isEqualTo(4);
+
+        List<Column> uk4 = table.uniqueKeyColumns().get("ux_v4_new");
+        assertThat(uk4.size()).isEqualTo(1);
+        assertThat(uk4.get(0).name()).isEqualTo("v4_new");
+
+        List<Column> uk45 = table.uniqueKeyColumns().get("ux_v4_v5");
+        assertThat(uk45.size()).isEqualTo(2);
+        assertThat(uk45.stream().map(Column::name).collect(Collectors.joining(","))).isEqualTo("v4_new,v5");
+    }
+
+    @Test
     @FixFor("DBZ-7251")
     public void shouldApplyCorrectColumnInfoWhenAlterColumnType() {
         String ddl = "CREATE TABLE `test` (\n" +

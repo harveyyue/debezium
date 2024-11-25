@@ -8,6 +8,8 @@ package io.debezium.connector.mysql.antlr.listener;
 
 import static io.debezium.antlr.AntlrDdlParser.getText;
 
+import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,6 +51,10 @@ public class CreateUniqueIndexParserListener extends MySqlParserBaseListener {
                     parser.databaseTables().overwriteTable(tableEditor.create());
                     parser.signalCreateIndex(parser.parseName(ctx.uid()), tableId, ctx);
                 }
+                // set unique key
+                List<String> ukColumnNames = parser.extractUniqueKeyColumnNames(ctx.indexColumnNames(), tableEditor);
+                tableEditor.setUniqueKeyName(parser.parseName(ctx.uid()), ukColumnNames);
+                parser.databaseTables().overwriteTable(tableEditor.create());
             }
             else {
                 throw new ParsingException(null, "Trying to create index on non existing table " + tableId.toString() + "."

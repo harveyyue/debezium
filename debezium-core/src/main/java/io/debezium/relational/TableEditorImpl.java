@@ -8,8 +8,10 @@ package io.debezium.relational;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -18,6 +20,7 @@ class TableEditorImpl implements TableEditor {
     private TableId id;
     private LinkedHashMap<String, Column> sortedColumns = new LinkedHashMap<>();
     private final List<String> pkColumnNames = new ArrayList<>();
+    private final Map<String, List<String>> ukColumnNames = new HashMap<>();
     private boolean uniqueValues = false;
     private String defaultCharsetName;
     private String comment;
@@ -53,6 +56,11 @@ class TableEditorImpl implements TableEditor {
     @Override
     public List<String> primaryKeyColumnNames() {
         return uniqueValues ? columnNames() : Collections.unmodifiableList(pkColumnNames);
+    }
+
+    @Override
+    public Map<String, List<String>> uniqueKeyColumnNames() {
+        return ukColumnNames;
     }
 
     @Override
@@ -124,6 +132,24 @@ class TableEditorImpl implements TableEditor {
     }
 
     @Override
+    public TableEditor setUniqueKeyName(String uniqueKeyName, List<String> ukColumnNames) {
+        this.ukColumnNames.put(uniqueKeyName, ukColumnNames);
+        return this;
+    }
+
+    @Override
+    public TableEditor setUniqueKeyName(String uniqueKeyName, String... ukColumnNames) {
+        this.ukColumnNames.put(uniqueKeyName, Arrays.asList(ukColumnNames));
+        return this;
+    }
+
+    @Override
+    public TableEditor setUniqueKeyNames(Map<String, List<String>> ukColumnNames) {
+        this.ukColumnNames.putAll(ukColumnNames);
+        return this;
+    }
+
+    @Override
     public TableEditor setUniqueValues() {
         pkColumnNames.clear();
         uniqueValues = true;
@@ -166,6 +192,16 @@ class TableEditorImpl implements TableEditor {
         }
         assert positionsAreValid();
         pkColumnNames.remove(columnName);
+        List<Map.Entry<String, List<String>>> existingUniqueKeys = ukColumnNames.entrySet().stream()
+                .filter(f -> f.getValue().contains(existing.name())).collect(Collectors.toList());
+        existingUniqueKeys.forEach(f -> {
+            if (f.getValue().size() == 1) {
+                ukColumnNames.remove(f.getKey());
+            }
+            else {
+                ukColumnNames.get(f.getKey()).remove(existing.name());
+            }
+        });
         return this;
     }
 
@@ -216,6 +252,13 @@ class TableEditorImpl implements TableEditor {
             throw new IllegalArgumentException("No column with name '" + existingName + "'");
         }
         Column newColumn = existing.edit().name(newName).create();
+        // Determine unique key names ...
+        ukColumnNames.entrySet().stream()
+                .filter(f -> f.getValue().contains(existing.name()))
+                .forEach(f -> {
+                    List<String> newColumns = f.getValue();
+                    newColumns.replaceAll(name -> existing.name().equals(name) ? newName : name);
+                });
         // Determine the primary key names ...
         List<String> newPkNames = null;
         if (!hasUniqueValues() && primaryKeyColumnNames().contains(existing.name())) {
@@ -270,6 +313,6 @@ class TableEditorImpl implements TableEditor {
             columns.add(column);
         });
         updatePrimaryKeys();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), defaultCharsetName, comment);
+        return new TableImpl(id, columns, primaryKeyColumnNames(), uniqueKeyColumnNames(), defaultCharsetName, comment);
     }
 }

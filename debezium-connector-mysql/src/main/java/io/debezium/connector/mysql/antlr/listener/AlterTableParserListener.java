@@ -306,8 +306,28 @@ public class AlterTableParserListener extends TableCommonParserListener {
                 // this may eventually get overwritten by a real PK
                 parser.parsePrimaryIndexColumnNames(ctx.indexColumnNames(), tableEditor);
             }
+            parser.parseUniqueKeyColumnNames(ctx, tableEditor);
         }, tableEditor);
         super.enterAlterByAddUniqueKey(ctx);
+    }
+
+    @Override
+    public void enterAlterByDropIndex(MySqlParser.AlterByDropIndexContext ctx) {
+        parser.runIfNotNull(() -> tableEditor.uniqueKeyColumnNames().remove(parser.parseName(ctx.uid())), tableEditor);
+        super.enterAlterByDropIndex(ctx);
+    }
+
+    @Override
+    public void enterAlterByRenameIndex(MySqlParser.AlterByRenameIndexContext ctx) {
+        parser.runIfNotNull(() -> {
+            String oldIndexName = parser.parseName(ctx.uid(0));
+            String newIndexName = parser.parseName(ctx.uid(1));
+            if (tableEditor.uniqueKeyColumnNames().get(oldIndexName) != null) {
+                tableEditor.uniqueKeyColumnNames().put(newIndexName, tableEditor.uniqueKeyColumnNames().get(oldIndexName));
+                tableEditor.uniqueKeyColumnNames().remove(oldIndexName);
+            }
+        }, tableEditor);
+        super.enterAlterByRenameIndex(ctx);
     }
 
     @Override
