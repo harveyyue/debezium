@@ -111,7 +111,7 @@ public class MySqlAntlrDdlParserTest {
         parser.parse(ddl, tables);
         assertThat(((MySqlAntlrDdlParser) parser).getParsingExceptionsFromWalker().size()).isEqualTo(0);
         assertThat(tables.size()).isEqualTo(1);
-        Table table = tables.forTable(null, null, "tidb_testg");
+        Table table = tables.forTable(null, null, "tidb_test");
         assertThat(table.columnWithName("id").isAutoIncremented()).isTrue();
     }
 
