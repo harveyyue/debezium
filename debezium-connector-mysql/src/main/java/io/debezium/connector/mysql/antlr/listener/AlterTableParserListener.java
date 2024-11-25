@@ -322,9 +322,9 @@ public class AlterTableParserListener extends TableCommonParserListener {
         parser.runIfNotNull(() -> {
             String oldIndexName = parser.parseName(ctx.uid(0));
             String newIndexName = parser.parseName(ctx.uid(1));
-            if (tableEditor.uniqueKeyColumnNames().get(oldIndexName) != null) {
-                tableEditor.uniqueKeyColumnNames().put(newIndexName, tableEditor.uniqueKeyColumnNames().get(oldIndexName));
-                tableEditor.uniqueKeyColumnNames().remove(oldIndexName);
+            List<String> oldIndexColumnNames = tableEditor.uniqueKeyColumnNames().remove(oldIndexName);
+            if (oldIndexColumnNames != null) {
+                tableEditor.uniqueKeyColumnNames().put(newIndexName, oldIndexColumnNames);
             }
         }, tableEditor);
         super.enterAlterByRenameIndex(ctx);

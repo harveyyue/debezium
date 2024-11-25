@@ -68,6 +68,7 @@ public class MySqlAntlrDdlParserListener extends MySqlParserBaseListener impleme
         listeners.add(new CreateUniqueIndexParserListener(parser));
         listeners.add(new SetStatementParserListener(parser));
         listeners.add(new UseStatementParserListener(parser));
+        listeners.add(new DropIndexParserListener(parser));
     }
 
     /**

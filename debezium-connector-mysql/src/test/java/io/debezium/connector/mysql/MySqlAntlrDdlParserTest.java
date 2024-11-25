@@ -138,8 +138,8 @@ public class MySqlAntlrDdlParserTest {
         String createUniqueIndexDdl = "create unique index ux_v1 on tb2 (v1)";
         parser.parse(createUniqueIndexDdl, tables);
 
-        String dropIndexDdl = "alter table tb2 drop index ux_v1";
-        parser.parse(dropIndexDdl, tables);
+        String alterDropIndexDdl = "alter table tb2 drop index ux_v1";
+        parser.parse(alterDropIndexDdl, tables);
 
         String alterAddIndexDdl = "alter table tb2 add unique index ux_v4(v4)";
         parser.parse(alterAddIndexDdl, tables);
@@ -162,6 +162,12 @@ public class MySqlAntlrDdlParserTest {
         List<Column> uk45 = table.uniqueKeyColumns().get("ux_v4_v5");
         assertThat(uk45.size()).isEqualTo(2);
         assertThat(uk45.stream().map(Column::name).collect(Collectors.joining(","))).isEqualTo("v4_new,v5");
+
+        // drop index
+        String dropIndexDdl = "drop index if exists ux_v4_v5 on tb2;";
+        parser.parse(dropIndexDdl, tables);
+        table = tables.forTable(null, null, "tb2");
+        assertThat(table.uniqueKeyColumns().get("ux_v4_v5")).isNull();
     }
 
     @Test
