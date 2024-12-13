@@ -400,7 +400,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     dataCollectionSchema.getEnvelopeSchema().schema(),
                     value,
                     null,
-                    headers);
+                    combineHeaders(headers));
 
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
 
@@ -451,7 +451,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                         topicName, null,
                         keySchema, key,
                         dataCollectionSchema.getEnvelopeSchema().schema(), value,
-                        null, headers);
+                        null, combineHeaders(headers));
                 return changeEventCreator.createDataChangeEvent(record);
             };
         }
@@ -506,7 +506,7 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
                     topicName, null,
                     keySchema, key,
                     dataCollectionSchema.getEnvelopeSchema().schema(), value,
-                    null, headers);
+                    null, combineHeaders(headers));
             dataListener.onEvent(partition, dataCollectionSchema.id(), offsetContext, keySchema, value, operation);
             queue.enqueue(changeEventCreator.createDataChangeEvent(record));
         }
@@ -596,5 +596,13 @@ public class EventDispatcher<P extends Partition, T extends DataCollectionId> im
         if (heartbeatsEnabled()) {
             heartbeat.close();
         }
+    }
+
+    private ConnectHeaders combineHeaders(ConnectHeaders source) {
+        if (source != null) {
+            connectorConfig.getConnectHeaders().forEach(source::add);
+            return source;
+        }
+        return connectorConfig.getConnectHeaders();
     }
 }

@@ -27,6 +27,7 @@ import org.apache.kafka.common.config.ConfigDef.Width;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.ConnectException;
+import org.apache.kafka.connect.header.ConnectHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,6 +41,7 @@ import io.debezium.heartbeat.HeartbeatConnectionProvider;
 import io.debezium.heartbeat.HeartbeatErrorHandler;
 import io.debezium.heartbeat.HeartbeatImpl;
 import io.debezium.relational.CustomConverterRegistry;
+import io.debezium.relational.Key;
 import io.debezium.relational.history.KafkaDatabaseHistory;
 import io.debezium.schema.SchemaTopicNamingStrategy;
 import io.debezium.spi.converter.ConvertedField;
@@ -534,6 +536,17 @@ public abstract class CommonConnectorConfig {
                     "for data change, schema change, transaction, heartbeat event etc.")
             .withDefault(SchemaTopicNamingStrategy.class.getName());
 
+    public static final Field TOPIC_HEADERS = Field.create("topic.headers")
+            .withDisplayName("Topic headers")
+            .withGroup(Field.createGroupEntry(Field.Group.ADVANCED, 22))
+            .withType(Type.STRING)
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDefault("baggage:x-origin-app=dbz")
+            .withValidation(CommonConnectorConfig::validateTopicHeadersField)
+            .withDescription("A semicolon-separated list of expressions that match key/value and add to topic headers" +
+                    "Example: baggage:x-origin-app=dbz;test_key:test_value.");
+
     public static final Field CUSTOM_RETRIABLE_EXCEPTION = Field.createInternal("custom.retriable.exception")
             .withDisplayName("Regular expression to match the exception message.")
             .withType(Type.STRING)
@@ -596,6 +609,7 @@ public abstract class CommonConnectorConfig {
     private final String signalingDataCollection;
     private final EnumSet<Operation> skippedOperations;
     private final String taskId;
+    private final ConnectHeaders connectHeaders;
 
     protected CommonConnectorConfig(Configuration config, String logicalName, int defaultSnapshotFetchSize) {
         this.config = config;
@@ -624,6 +638,7 @@ public abstract class CommonConnectorConfig {
         this.signalingDataCollection = config.getString(SIGNAL_DATA_COLLECTION);
         this.skippedOperations = determineSkippedOperations(config);
         this.taskId = config.getString(TASK_ID);
+        this.connectHeaders = createConnectHeaders();
     }
 
     private static EnumSet<Envelope.Operation> determineSkippedOperations(Configuration config) {
@@ -725,6 +740,10 @@ public abstract class CommonConnectorConfig {
         return customConverterRegistry;
     }
 
+    public ConnectHeaders getConnectHeaders() {
+        return connectHeaders;
+    }
+
     /**
      * Whether a particular connector supports an optimized way for implementing operation skipping, or not.
      */
@@ -757,6 +776,15 @@ public abstract class CommonConnectorConfig {
         }
         LOGGER.info("Loading the custom topic naming strategy plugin: {}", strategyName);
         return topicNamingStrategy;
+    }
+
+    public ConnectHeaders createConnectHeaders() {
+        ConnectHeaders connectHeaders = new ConnectHeaders();
+        String rawTopicHeaders = config.getString(TOPIC_HEADERS, TOPIC_HEADERS.defaultValueAsString());
+        Arrays.stream(Key.CustomKeyMapper.PATTERN_SPLIT.split(rawTopicHeaders))
+                .map(Key.CustomKeyMapper.TABLE_SPLIT::split)
+                .forEach(kv -> connectHeaders.addString(kv[0], kv[1]));
+        return connectHeaders;
     }
 
     @SuppressWarnings("unchecked")
@@ -906,6 +934,26 @@ public abstract class CommonConnectorConfig {
         }
 
         return 0;
+    }
+
+    private static int validateTopicHeadersField(Configuration config, Field field, Field.ValidationOutput problems) {
+        String topicHeaders = config.getString(TOPIC_HEADERS);
+        int problemCount = 0;
+
+        if (topicHeaders != null) {
+            if (topicHeaders.isEmpty()) {
+                problems.accept(TOPIC_HEADERS, "", "Must not be empty");
+            }
+
+            for (String substring : Key.CustomKeyMapper.PATTERN_SPLIT.split(topicHeaders)) {
+                if (Key.CustomKeyMapper.TABLE_SPLIT.split(substring).length != 2) {
+                    problems.accept(TOPIC_HEADERS, substring,
+                            substring + " has an invalid format (expecting 'key:value')");
+                    problemCount++;
+                }
+            }
+        }
+        return problemCount;
     }
 
     /**

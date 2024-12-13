@@ -98,7 +98,7 @@ public class Key {
         public static final Pattern MSG_KEY_COLUMNS_PATTERN = Pattern.compile("^\\s*([^\\s:]+):([^:\\s]+)\\s*$");
 
         public static final Pattern PATTERN_SPLIT = Pattern.compile(";");
-        private static final Pattern TABLE_SPLIT = Pattern.compile(":");
+        public static final Pattern TABLE_SPLIT = Pattern.compile(":");
         private static final Pattern COLUMN_SPLIT = Pattern.compile(",");
 
         /**
