@@ -91,6 +91,13 @@ public interface TableEditor {
     Map<String, List<String>> uniqueKeyColumnNames();
 
     /**
+     * The map of table properties.
+     *
+     * @return the map of table properties
+     */
+    Map<String, String> tableProperties();
+
+    /**
      * Determine whether this table has a primary key.
      * @return {@code true} if this table has at least one {@link #primaryKeyColumnNames() primary key column}, or {@code false}
      * if there are no primary key columns
@@ -242,6 +249,20 @@ public interface TableEditor {
      * @throws IllegalArgumentException if a name does not correspond to an existing column
      */
     TableEditor setUniqueValues();
+
+    /**
+     * Sets ths table's properties.
+     *
+     * @return this editor so callers can chain methods together
+     */
+    TableEditor setTableProperties(Map<String, String> tableProperties);
+
+    /**
+     * Sets ths table's property to contain all properties.
+     *
+     * @return this editor so callers can chain methods together
+     */
+    TableEditor setTableProperty(String propertyKey, String propertyValue);
 
     /**
      * Set the name of the character set that should be used by default in the columns that require a character set but have

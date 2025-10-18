@@ -49,6 +49,13 @@ public interface Table {
     Map<String, List<String>> uniqueKeyColumnNames();
 
     /**
+     * The map of table properties.
+     *
+     * @return the map of key and value that make up the table properties
+     */
+    Map<String, String> tableProperties();
+
+    /**
      * Get the columns that make up the primary key for this table.
      * @return the immutable list of columns that make up the primary key; never null but possibly empty
      */

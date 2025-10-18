@@ -21,6 +21,7 @@ class TableEditorImpl implements TableEditor {
     private LinkedHashMap<String, Column> sortedColumns = new LinkedHashMap<>();
     private final List<String> pkColumnNames = new ArrayList<>();
     private final Map<String, List<String>> ukColumnNames = new HashMap<>();
+    private final Map<String, String> tableProperties = new HashMap<>();
     private boolean uniqueValues = false;
     private String defaultCharsetName;
     private String comment;
@@ -61,6 +62,11 @@ class TableEditorImpl implements TableEditor {
     @Override
     public Map<String, List<String>> uniqueKeyColumnNames() {
         return ukColumnNames;
+    }
+
+    @Override
+    public Map<String, String> tableProperties() {
+        return tableProperties;
     }
 
     @Override
@@ -153,6 +159,18 @@ class TableEditorImpl implements TableEditor {
     public TableEditor setUniqueValues() {
         pkColumnNames.clear();
         uniqueValues = true;
+        return this;
+    }
+
+    @Override
+    public TableEditor setTableProperties(Map<String, String> tableProperties) {
+        this.tableProperties.putAll(tableProperties);
+        return this;
+    }
+
+    @Override
+    public TableEditor setTableProperty(String propertyKey, String propertyValue) {
+        this.tableProperties.put(propertyKey, propertyValue);
         return this;
     }
 
@@ -313,6 +331,6 @@ class TableEditorImpl implements TableEditor {
             columns.add(column);
         });
         updatePrimaryKeys();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), uniqueKeyColumnNames(), defaultCharsetName, comment);
+        return new TableImpl(id, columns, primaryKeyColumnNames(), uniqueKeyColumnNames(), tableProperties(), defaultCharsetName, comment);
     }
 }

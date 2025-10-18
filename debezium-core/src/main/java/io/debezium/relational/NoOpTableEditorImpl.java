@@ -55,6 +55,11 @@ final class NoOpTableEditorImpl implements TableEditor {
     }
 
     @Override
+    public Map<String, String> tableProperties() {
+        return Collections.emptyMap();
+    }
+
+    @Override
     public TableEditor addColumns(Column... columns) {
         return this;
     }
@@ -102,6 +107,16 @@ final class NoOpTableEditorImpl implements TableEditor {
     @Override
     public TableEditor setUniqueValues() {
         this.uniqueValues = true;
+        return this;
+    }
+
+    @Override
+    public TableEditor setTableProperties(Map<String, String> tableProperties) {
+        return this;
+    }
+
+    @Override
+    public TableEditor setTableProperty(String propertyKey, String propertyValue) {
         return this;
     }
 
@@ -163,6 +178,6 @@ final class NoOpTableEditorImpl implements TableEditor {
             throw new IllegalStateException("Unable to create a table from an editor that has no table ID");
         }
         List<Column> columns = new ArrayList<>();
-        return new TableImpl(id, columns, primaryKeyColumnNames(), uniqueKeyColumnNames(), defaultCharsetName, comment);
+        return new TableImpl(id, columns, primaryKeyColumnNames(), uniqueKeyColumnNames(), tableProperties(), defaultCharsetName, comment);
     }
 }

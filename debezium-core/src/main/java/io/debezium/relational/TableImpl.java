@@ -21,20 +21,24 @@ final class TableImpl implements Table {
     private final List<String> pkColumnNames;
     private final Map<String, List<String>> ukColumnNames;
     private final Map<String, Column> columnsByLowercaseName;
+    private final Map<String, String> tableProperties;
     private final String defaultCharsetName;
     private final String comment;
 
     @PackagePrivate
     TableImpl(Table table) {
-        this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.uniqueKeyColumnNames(), table.defaultCharsetName(), table.comment());
+        this(table.id(), table.columns(), table.primaryKeyColumnNames(), table.uniqueKeyColumnNames(), table.tableProperties(), table.defaultCharsetName(),
+                table.comment());
     }
 
     @PackagePrivate
-    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, Map<String, List<String>> ukColumnNames, String defaultCharsetName, String comment) {
+    TableImpl(TableId id, List<Column> sortedColumns, List<String> pkColumnNames, Map<String, List<String>> ukColumnNames, Map<String, String> tableProperties,
+              String defaultCharsetName, String comment) {
         this.id = id;
         this.columnDefs = Collections.unmodifiableList(sortedColumns);
         this.pkColumnNames = pkColumnNames == null ? Collections.emptyList() : Collections.unmodifiableList(pkColumnNames);
         this.ukColumnNames = ukColumnNames == null ? Collections.emptyMap() : Collections.unmodifiableMap(ukColumnNames);
+        this.tableProperties = tableProperties == null ? Collections.emptyMap() : Collections.unmodifiableMap(tableProperties);
         Map<String, Column> defsByLowercaseName = new LinkedHashMap<>();
         for (Column def : this.columnDefs) {
             defsByLowercaseName.put(def.name().toLowerCase(), def);
@@ -57,6 +61,11 @@ final class TableImpl implements Table {
     @Override
     public Map<String, List<String>> uniqueKeyColumnNames() {
         return ukColumnNames;
+    }
+
+    @Override
+    public Map<String, String> tableProperties() {
+        return tableProperties;
     }
 
     @Override
@@ -125,6 +134,7 @@ final class TableImpl implements Table {
         sb.append(prefix).append("}").append(System.lineSeparator());
         sb.append(prefix).append("primary key: ").append(primaryKeyColumnNames()).append(System.lineSeparator());
         sb.append(prefix).append("unique key: ").append(uniqueKeyColumnNames()).append(System.lineSeparator());
+        sb.append(prefix).append("table properties: ").append(tableProperties()).append(System.lineSeparator());
         sb.append(prefix).append("default charset: ").append(defaultCharsetName()).append(System.lineSeparator());
         sb.append(prefix).append("comment: ").append(comment()).append(System.lineSeparator());
     }
@@ -135,6 +145,7 @@ final class TableImpl implements Table {
                 .setColumns(columnDefs)
                 .setPrimaryKeyNames(pkColumnNames)
                 .setUniqueKeyNames(ukColumnNames)
+                .setTableProperties(tableProperties)
                 .setDefaultCharsetName(defaultCharsetName)
                 .setComment(comment);
     }
