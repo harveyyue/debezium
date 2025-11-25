@@ -63,7 +63,7 @@ ddlStatement
     | dropDatabase | dropEvent | dropIndex
     | dropLogfileGroup | dropProcedure | dropFunction
     | dropServer | dropTable | dropTablespace
-    | dropTrigger | dropView | dropSequence
+    | dropTrigger | dropView | dropRole | setRole |dropSequence
     | renameTable | truncateTable
     ;
 
@@ -303,8 +303,12 @@ createDatabaseOption
     | READ ONLY '='? (DEFAULT | ZERO_DECIMAL | ONE_DECIMAL)
     ;
 
+currentUserExpression
+    : CURRENT_USER ('(' ')')?
+    ;
+
 ownerStatement
-    : DEFINER '=' (userName | CURRENT_USER ( '(' ')')?)
+    : DEFINER '=' (userName | currentUserExpression)
     ;
 
 scheduleExpression
@@ -394,12 +398,12 @@ createDefinitions
 
 createDefinition
     : uid columnDefinition                                          #columnDeclaration
-    | tableConstraint                                               #constraintDeclaration
+    | tableConstraint NOT? ENFORCED?                                #constraintDeclaration
     | indexColumnDefinition                                         #indexDeclaration
     ;
 
 columnDefinition
-    : dataType columnConstraint*
+    : dataType columnConstraint* NOT? ENFORCED?
     ;
 
 columnConstraint
@@ -452,7 +456,11 @@ referenceAction
     ;
 
 referenceControlType
-    : RESTRICT | CASCADE | SET NULL_LITERAL | NO ACTION
+    : RESTRICT
+    | CASCADE
+    | SET NULL_LITERAL
+    | NO ACTION
+    | SET DEFAULT
     ;
 
 indexColumnDefinition
@@ -492,6 +500,7 @@ tableOption
           DEFAULT | DYNAMIC | FIXED | COMPRESSED
           | REDUNDANT | COMPACT | ID
         )                                                                           #tableOptionRowFormat
+    | START TRANSACTION                                                             #tableOptionStartTransaction
     | STATS_AUTO_RECALC '='? extBoolValue=(DEFAULT | '0' | '1')                     #tableOptionRecalculation
     | STATS_PERSISTENT '='? extBoolValue=(DEFAULT | '0' | '1')                      #tableOptionPersistent
     | STATS_SAMPLE_PAGES '='? decimalLiteral                                        #tableOptionSamplePage
@@ -500,6 +509,7 @@ tableOption
     | tablespaceStorage                                                             #tableOptionTablespace
     | TRANSACTIONAL '='? ('0' | '1')                                                #tableOptionTransactional
     | UNION '='? '(' tables ')'                                                     #tableOptionUnion
+    | WITH SYSTEM VERSIONING                                                        #tableOptionWithSystemVersioning // MariaDB-specific only
     ;
 
 tableType
@@ -523,7 +533,7 @@ partitionDefinitions
 partitionFunctionDefinition
     : LINEAR? HASH '(' expression ')'                               #partitionFunctionHash
     | LINEAR? KEY (ALGORITHM '=' algType=('1' | '2'))?
-      '(' uidList ')'                                               #partitionFunctionKey
+      '(' uidList? ')'                                               #partitionFunctionKey
     | RANGE ( '(' expression ')' | COLUMNS '(' uidList ')' )        #partitionFunctionRange
     | LIST ( '(' expression ')' | COLUMNS '(' uidList ')' )         #partitionFunctionList
     ;
@@ -785,6 +795,17 @@ dropTrigger
 dropView
     : DROP VIEW ifExists?
       fullId (',' fullId)* dropType=(RESTRICT | CASCADE)?
+    ;
+
+dropRole
+    : DROP ROLE ifExists? roleName (',' roleName)*
+    ;
+
+setRole
+    : SET DEFAULT ROLE (NONE | ALL | roleName (',' roleName)*) TO (userName | uid) (
+        ',' (userName | uid)
+    )*
+    | SET ROLE roleOption
     ;
 
 dropSequence
@@ -1696,6 +1717,7 @@ privilege
     | SHOW (VIEW | DATABASES)
     | SHUTDOWN | SUPER | TRIGGER | UPDATE | USAGE
     | APPLICATION_PASSWORD_ADMIN | AUDIT_ADMIN | BACKUP_ADMIN | BINLOG_ADMIN | BINLOG_ENCRYPTION_ADMIN | CLONE_ADMIN
+    | AUDIT_ABORT_EXEMPT | AUTHENTICATION_POLICY_ADMIN | FIREWALL_EXEMPT | GROUP_REPLICATION_STREAM | READ_MASK | SENSITIVE_VARIABLES_OBSERVER
     | CONNECTION_ADMIN | ENCRYPTION_KEY_ADMIN | FIREWALL_ADMIN | FIREWALL_USER | FLUSH_OPTIMIZER_COSTS
     | FLUSH_STATUS | FLUSH_TABLES | FLUSH_USER_RESOURCES | GROUP_REPLICATION_ADMIN
     | INNODB_REDO_LOG_ARCHIVE | INNODB_REDO_LOG_ENABLE | NDB_STORED_USER | PASSWORDLESS_USER_ADMIN | PERSIST_RO_VARIABLES_ADMIN | REPLICATION_APPLIER
@@ -2039,7 +2061,8 @@ tableName
     ;
 
 roleName
-    : uid
+    : userName
+    | uid
     ;
 
 fullColumnName
@@ -2051,8 +2074,22 @@ indexColumnName
     : ((uid | STRING_LITERAL) ('(' decimalLiteral ')')? | expression) sortType=(ASC | DESC)?
     ;
 
+simpleUserName
+    : STRING_LITERAL
+    | ID
+    | ADMIN
+    | keywordsCanBeId
+    ;
+
+hostName
+    : (LOCAL_ID | HOST_IP_ADDRESS | '@')
+    ;
+
 userName
-    : STRING_USER_NAME | STRING_USER_NAME_MARIADB | ID | STRING_LITERAL | keywordsCanBeId;
+    : simpleUserName
+    | simpleUserName hostName
+    | STRING_USER_NAME | STRING_USER_NAME_MARIADB
+    ;
 
 mysqlVariable
     : LOCAL_ID
@@ -2186,7 +2223,7 @@ dataType
       lengthOneDimension? BINARY?
       ((CHARACTER SET | CHARSET | CHAR SET) charsetName)?
       (COLLATE collationName | BINARY)?                             #stringDataType
-    | NATIONAL typeName=(VARCHAR | CHARACTER)
+    | NATIONAL typeName=(VARCHAR | CHARACTER | CHAR)
       lengthOneDimension? BINARY?                                   #nationalStringDataType
     | NCHAR typeName=VARCHAR
       lengthOneDimension? BINARY?                                   #nationalStringDataType
@@ -2218,12 +2255,13 @@ dataType
     | typeName=(
         GEOMETRYCOLLECTION | GEOMCOLLECTION | LINESTRING | MULTILINESTRING
         | MULTIPOINT | MULTIPOLYGON | POINT | POLYGON | JSON | GEOMETRY
-      )                                                             #spatialDataType
+      ) (SRID decimalLiteral)?                                      #spatialDataType
     | typeName=LONG VARCHAR?
       BINARY?
       ((CHARACTER SET | CHARSET | CHAR SET) charsetName)?
       (COLLATE collationName)?                                      #longVarcharDataType    // LONG VARCHAR is the same as LONG
     | LONG VARBINARY                                                #longVarbinaryDataType
+    | UUID                                                          #uuidDataType // MariaDB-specific only
     ;
 
 collectionOptions
@@ -2708,6 +2746,7 @@ keywordsCanBeId
     | UNDO_BUFFER_SIZE | UNINSTALL | UNKNOWN | UNTIL | UPGRADE | USA | USER | USE_FRM | USER_RESOURCES
     | VALIDATION | VALUE | VAR_POP | VAR_SAMP | VARIABLES | VARIANCE | VERSION_TOKEN_ADMIN | VIEW | WAIT | WARNINGS | WITHOUT
     | WORK | WRAPPER | X509 | XA | XA_RECOVER_ADMIN | XML
+    | AUDIT_ABORT_EXEMPT | AUTHENTICATION_POLICY_ADMIN | FIREWALL_EXEMPT | GROUP_REPLICATION_STREAM | READ_MASK | SENSITIVE_VARIABLES_OBSERVER
     // MariaDB
     | VIA | LASTVAL | NEXTVAL | SETVAL | PREVIOUS | PERSISTENT | REPLICATION_MASTER_ADMIN | REPLICA | READ_ONLY_ADMIN | FEDERATED_ADMIN | BINLOG_MONITOR | BINLOG_REPLAY
     | ENCRYPTED | ENCRYPTION_KEY_ID | CYCLE | INCREMENT | MINVALUE | MAXVALUE | NOCACHE | NOCYCLE | NOMINVALUE

@@ -72,3 +72,6 @@ drop function bar;
 DROP SEQUENCE IF EXISTS /* test comment */ s1, s2;
 DROP SEQUENCE s3;
 #end
+-- Drop user
+drop user 'global_dba' @'10.21.42.43';
+drop user 'global_dba'@'10.21.42.43';

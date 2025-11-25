@@ -421,6 +421,7 @@ BEGIN
   DECLARE var1 INT unsigned default 1;
   DECLARE var2 TIMESTAMP default CURRENT_TIMESTAMP;
   DECLARE var3 INT unsigned default 2 + var1;
+  SET @droptable = CONCAT('drop table if exists ', table_name);
 END -- //-- delimiter ;
 #end
 #begin

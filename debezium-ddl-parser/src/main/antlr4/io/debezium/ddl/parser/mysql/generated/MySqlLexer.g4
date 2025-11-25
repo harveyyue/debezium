@@ -95,6 +95,7 @@ ELSE:                                'ELSE';
 ELSEIF:                              'ELSEIF';
 EMPTY:                               'EMPTY';
 ENCLOSED:                            'ENCLOSED';
+ENFORCED:                            'ENFORCED';
 ESCAPED:                             'ESCAPED';
 EXCEPT:                              'EXCEPT';
 EXISTS:                              'EXISTS';
@@ -204,6 +205,7 @@ SSL:                                 'SSL';
 STACKED:                             'STACKED';
 STARTING:                            'STARTING';
 STRAIGHT_JOIN:                       'STRAIGHT_JOIN';
+SYSTEM:                              'SYSTEM';
 TABLE:                               'TABLE';
 TERMINATED:                          'TERMINATED';
 THEN:                                'THEN';
@@ -221,6 +223,7 @@ USAGE:                               'USAGE';
 USE:                                 'USE';
 USING:                               'USING';
 VALUES:                              'VALUES';
+VERSIONING:                          'VERSIONING';
 WHEN:                                'WHEN';
 WHERE:                               'WHERE';
 WHILE:                               'WHILE';
@@ -769,6 +772,12 @@ SUPER:                               'SUPER';
 PRIVILEGES:                          'PRIVILEGES';
 APPLICATION_PASSWORD_ADMIN:          'APPLICATION_PASSWORD_ADMIN';
 AUDIT_ADMIN:                         'AUDIT_ADMIN';
+AUDIT_ABORT_EXEMPT:                  'AUDIT_ABORT_EXEMPT';
+AUTHENTICATION_POLICY_ADMIN:         'AUTHENTICATION_POLICY_ADMIN';
+FIREWALL_EXEMPT:                     'FIREWALL_EXEMPT';
+GROUP_REPLICATION_STREAM:            'GROUP_REPLICATION_STREAM';
+READ_MASK:                           'READ_MASK';
+SENSITIVE_VARIABLES_OBSERVER:        'SENSITIVE_VARIABLES_OBSERVER';
 BACKUP_ADMIN:                        'BACKUP_ADMIN';
 BINLOG_ADMIN:                        'BINLOG_ADMIN';
 BINLOG_ENCRYPTION_ADMIN:             'BINLOG_ENCRYPTION_ADMIN';
@@ -1316,8 +1325,7 @@ STRING_USER_NAME:                    (
                                      (
                                        SQUOTA_STRING | DQUOTA_STRING 
                                        | BQUOTA_STRING | ID_LITERAL
-                                       | [0-9]+ '.' [0-9]+ '.' [0-9]+ '.' [0-9]+
-                                       | [0-9A-Fa-f:]+
+                                       | IP_ADDRESS
                                      );
 STRING_USER_NAME_MARIADB:            (
                                         SQUOTA_STRING | DQUOTA_STRING
@@ -1335,7 +1343,7 @@ GLOBAL_ID:                              '@' '@'
                                         [A-Z0-9._$]+
                                         | BQUOTA_STRING
                                     );
-
+HOST_IP_ADDRESS  : (AT_SIGN IP_ADDRESS);
 
 // Fragments for Literal primitives
 
@@ -1357,6 +1365,7 @@ fragment BQUOTA_STRING:              '`' ( ~'`' | '``' )* '`';
 fragment HEX_DIGIT:                  [0-9A-F];
 fragment DEC_DIGIT:                  [0-9];
 fragment BIT_STRING_L:               'B' '\'' [01]+ '\'';
+fragment IP_ADDRESS:                 [0-9]+ '.' [0-9.]+ | [0-9A-F]* ':' [0-9A-F]* ':' [0-9A-F:]+;
 
 
 
