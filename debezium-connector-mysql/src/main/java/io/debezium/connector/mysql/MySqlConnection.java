@@ -47,6 +47,7 @@ public class MySqlConnection extends JdbcConnection {
 
     private static Logger LOGGER = LoggerFactory.getLogger(MySqlConnection.class);
 
+    private static final String SQL_SHOW_MASTER_STATUS = "SHOW MASTER STATUS";
     private static final String SQL_SHOW_SYSTEM_VARIABLES = "SHOW VARIABLES";
     private static final String SQL_SHOW_SYSTEM_VARIABLES_CHARACTER_SET = "SHOW VARIABLES WHERE Variable_name IN ('character_set_server','collation_server')";
     private static final String SQL_SHOW_SESSION_VARIABLE_SSL_VERSION = "SHOW SESSION STATUS LIKE 'Ssl_version'";
@@ -94,6 +95,35 @@ public class MySqlConnection extends JdbcConnection {
                     System.clearProperty(name);
                 }
             });
+        }
+    }
+
+    public BinlogInfo showMasterStatus() {
+        try {
+            return queryAndMap(SQL_SHOW_MASTER_STATUS, rs -> {
+                if (rs.next()) {
+                    String binlogFilename = rs.getString(1);
+                    long binlogPosition = rs.getLong(2);
+                    String gtidSet = null;
+                    if (rs.getMetaData().getColumnCount() > 4) {
+                        // This column exists only in MySQL 5.6.5 or later ...
+                        gtidSet = rs.getString(5);
+                        LOGGER.info("\t using binlog '{}' at position '{}' and gtid '{}'", binlogFilename, binlogPosition,
+                                gtidSet);
+                    }
+                    else {
+                        LOGGER.info("\t using binlog '{}' at position '{}'", binlogFilename, binlogPosition);
+                    }
+                    return new BinlogInfo(binlogFilename, binlogPosition, gtidSet);
+                }
+                else {
+                    throw new DebeziumException("Cannot read the binlog filename and position via '" + SQL_SHOW_MASTER_STATUS
+                            + "'. Make sure your server is correctly configured");
+                }
+            });
+        }
+        catch (SQLException e) {
+            throw new DebeziumException("Error reading MySQL variables: " + e.getMessage(), e);
         }
     }
 
@@ -236,7 +266,7 @@ public class MySqlConnection extends JdbcConnection {
      */
     public String knownGtidSet() {
         try {
-            return queryAndMap("SHOW MASTER STATUS", rs -> {
+            return queryAndMap(SQL_SHOW_MASTER_STATUS, rs -> {
                 if (rs.next() && rs.getMetaData().getColumnCount() > 4) {
                     return rs.getString(5); // GTID set, may be null, blank, or contain a GTID set
                 }
@@ -648,6 +678,19 @@ public class MySqlConnection extends JdbcConnection {
             else {
                 LOGGER.info("Default database collation for '{}' not found", dbName);
             }
+        }
+    }
+
+    public static class BinlogInfo extends MySqlStreamingChangeEventSource.BinlogPosition {
+        private final String gtidSet;
+
+        public BinlogInfo(String filename, long position, String gtidSet) {
+            super(filename, position);
+            this.gtidSet = gtidSet;
+        }
+
+        public String getGtidSet() {
+            return gtidSet;
         }
     }
 }

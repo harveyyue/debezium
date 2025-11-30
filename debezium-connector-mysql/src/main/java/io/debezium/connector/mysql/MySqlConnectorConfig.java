@@ -148,6 +148,12 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         SCHEMA_ONLY("schema_only", true, false, true, false, false),
 
         /**
+         * Perform a snapshot of only the database schemas (without data) and then force begin reading the latest binlog position.
+         * This should be used with care, only the previous binlog is not available.
+         */
+        SCHEMA_ONLY_FORCE_LATEST("schema_only_force_latest", true, false, true, false, false),
+
+        /**
          * Perform a snapshot of only the database schemas (without data) and then begin reading the binlog at the current binlog position.
          * This can be used for recovery only if the connector has existing offsets and the database.history.kafka.topic does not exist (deleted).
          * This recovery option should be used with care as it assumes there have been no schema changes since the connector last stopped,

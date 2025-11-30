@@ -111,7 +111,18 @@ public class MySqlConnectorTask extends BaseSourceTask<MySqlPartition, MySqlOffs
         }
 
         // If the binlog position is not available it is necessary to reexecute snapshot
-        if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {
+        // Check schema_only_force_latest first
+        if (connectorConfig.getSnapshotMode().equals(SnapshotMode.SCHEMA_ONLY_FORCE_LATEST)) {
+            LOGGER.warn("The connector will start from latest binlog position or GTID if enabled, there is a risk of data loss.");
+            MySqlConnection.BinlogInfo binlogInfo = connection.showMasterStatus();
+            MySqlOffsetContext currentOffset = MySqlOffsetContext.initial(connectorConfig);
+            currentOffset.setBinlogStartPoint(binlogInfo.getFilename(), binlogInfo.getPosition());
+            if (binlogInfo.getGtidSet() != null) {
+                currentOffset.setCompletedGtidSet(binlogInfo.getGtidSet());
+            }
+            previousOffsets = Offsets.of(partition, currentOffset);
+        }
+        else if (validateSnapshotFeasibility(connectorConfig, previousOffset)) {
             previousOffsets.resetOffset(partition);
         }
 
