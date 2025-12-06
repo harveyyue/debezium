@@ -885,6 +885,24 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
             .withImportance(Importance.LOW)
             .withDescription("Switched connector to use alternative methods to deliver signals to Debezium instead of writing to signaling table");
 
+    public static final Field ENABLE_STREAMING_SAMPLING = Field.create("enable.streaming.sampling")
+            .withDisplayName("Enable streaming sampling")
+            .withType(Type.BOOLEAN)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 28))
+            .withDefault(false)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("Switched connector to use sampling mode, when table schema changed which will trigger sampling");
+
+    public static final Field SAMPLING_COUNT = Field.create("sampling.count")
+            .withDisplayName("Connector sampling count")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTOR, 29))
+            .withDefault(3)
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDescription("The sampling number of connector");
+
     private static final ConfigDefinition CONFIG_DEFINITION = HistorizedRelationalDatabaseConnectorConfig.CONFIG_DEFINITION.edit()
             .name("MySQL")
             .excluding(
@@ -922,7 +940,9 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
                     SCHEMA_NAME_ADJUSTMENT_MODE,
                     ROW_COUNT_FOR_STREAMING_RESULT_SETS,
                     INCREMENTAL_SNAPSHOT_CHUNK_SIZE,
-                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES)
+                    INCREMENTAL_SNAPSHOT_ALLOW_SCHEMA_CHANGES,
+                    ENABLE_STREAMING_SAMPLING,
+                    SAMPLING_COUNT)
             .events(
                     INCLUDE_SQL_QUERY,
                     TABLE_IGNORE_BUILTIN,
@@ -968,6 +988,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
     private final Predicate<String> gtidSourceFilter;
     private final EventProcessingFailureHandlingMode inconsistentSchemaFailureHandlingMode;
     private final boolean readOnlyConnection;
+    private final boolean enableStreamingSampling;
+    private final int samplingCount;
 
     public MySqlConnectorConfig(Configuration config) {
         super(
@@ -999,6 +1021,8 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
         final String gtidSetExcludes = config.getString(MySqlConnectorConfig.GTID_SOURCE_EXCLUDES);
         this.gtidSourceFilter = gtidSetIncludes != null ? Predicates.includesUuids(gtidSetIncludes)
                 : (gtidSetExcludes != null ? Predicates.excludesUuids(gtidSetExcludes) : null);
+        this.enableStreamingSampling = config.getBoolean(ENABLE_STREAMING_SAMPLING);
+        this.samplingCount = config.getInteger(SAMPLING_COUNT);
     }
 
     public boolean useCursorFetch() {
@@ -1185,6 +1209,14 @@ public class MySqlConnectorConfig extends HistorizedRelationalDatabaseConnectorC
 
     public boolean isReadOnlyConnection() {
         return readOnlyConnection;
+    }
+
+    public boolean isEnableStreamingSampling() {
+        return enableStreamingSampling;
+    }
+
+    public int getSamplingCount() {
+        return samplingCount;
     }
 
     /**

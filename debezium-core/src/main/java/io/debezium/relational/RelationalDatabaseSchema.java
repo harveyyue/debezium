@@ -117,9 +117,9 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
     /**
      * Builds up the CDC event schema for the given table and stores it in this schema.
      */
-    protected void buildAndRegisterSchema(Table table) {
+    protected void buildAndRegisterSchema(Table table, boolean isFromSnapshot) {
         if (tableFilter.isIncluded(table.id())) {
-            TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper);
+            TableSchema schema = schemaBuilder.create(topicNamingStrategy, table, columnFilter, columnMappers, customKeysMapper, isFromSnapshot);
             schemasByTableId.put(table.id(), schema);
         }
     }
@@ -189,6 +189,6 @@ public abstract class RelationalDatabaseSchema implements DatabaseSchema<TableId
         }
         Table table = tableFor(id);
 
-        buildAndRegisterSchema(table);
+        buildAndRegisterSchema(table, false);
     }
 }

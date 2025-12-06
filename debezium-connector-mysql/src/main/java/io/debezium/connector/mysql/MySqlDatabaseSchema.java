@@ -151,7 +151,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         // Create TableSchema instances for any existing table ...
         this.tableIds().forEach(id -> {
             Table table = this.tableFor(id);
-            buildAndRegisterSchema(table);
+            buildAndRegisterSchema(table, true);
         });
     }
 
@@ -164,7 +164,7 @@ public class MySqlDatabaseSchema extends HistorizedRelationalDatabaseSchema {
         switch (schemaChange.getType()) {
             case CREATE:
             case ALTER:
-                schemaChange.getTableChanges().forEach(x -> buildAndRegisterSchema(x.getTable()));
+                schemaChange.getTableChanges().forEach(x -> buildAndRegisterSchema(x.getTable(), schemaChange.isFromSnapshot()));
                 break;
             case DROP:
                 schemaChange.getTableChanges().forEach(x -> removeSchema(x.getId()));

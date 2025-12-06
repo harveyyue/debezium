@@ -120,6 +120,11 @@ public class TableSchemaBuilder {
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
     public TableSchema create(TopicNamingStrategy topicNamingStrategy, Table table, ColumnNameFilter filter, ColumnMappers mappers, KeyMapper keysMapper) {
+        return create(topicNamingStrategy, table, filter, mappers, keysMapper, false);
+    }
+
+    public TableSchema create(TopicNamingStrategy topicNamingStrategy, Table table, ColumnNameFilter filter, ColumnMappers mappers, KeyMapper keysMapper,
+                              boolean isFromSnapshot) {
         // Build the schemas ...
         final TableId tableId = table.id();
         final String schemaNamePrefix = topicNamingStrategy.dataChangeTopic(tableId);
@@ -162,7 +167,7 @@ public class TableSchemaBuilder {
         StructGenerator valueGenerator = createValueGenerator(valSchema, tableId, table.columns(), filter, mappers);
 
         // And the table schema ...
-        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator);
+        return new TableSchema(tableId, keySchema, keyGenerator, envelope, valSchema, valueGenerator, isFromSnapshot);
     }
 
     public boolean isMultiPartitionMode() {

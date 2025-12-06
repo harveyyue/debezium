@@ -62,7 +62,7 @@ public abstract class HistorizedRelationalDatabaseSchema extends RelationalDatab
         databaseHistory.recover(offsets, tables(), getDdlParser());
         recoveredTables = !tableIds().isEmpty();
         for (TableId tableId : tableIds()) {
-            buildAndRegisterSchema(tableFor(tableId));
+            buildAndRegisterSchema(tableFor(tableId), true);
         }
     }
 

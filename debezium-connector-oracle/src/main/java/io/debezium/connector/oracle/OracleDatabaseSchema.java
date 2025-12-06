@@ -73,7 +73,7 @@ public class OracleDatabaseSchema extends HistorizedRelationalDatabaseSchema {
             case CREATE:
             case ALTER:
                 schemaChange.getTableChanges().forEach(x -> {
-                    buildAndRegisterSchema(x.getTable());
+                    buildAndRegisterSchema(x.getTable(), schemaChange.isFromSnapshot());
                     tables().overwriteTable(x.getTable());
                 });
                 break;

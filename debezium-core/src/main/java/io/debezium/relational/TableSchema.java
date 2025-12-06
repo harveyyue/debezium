@@ -14,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.debezium.annotation.Immutable;
+import io.debezium.config.EnumeratedValue;
 import io.debezium.data.Envelope;
 import io.debezium.data.SchemaUtil;
 import io.debezium.schema.DataCollectionSchema;
@@ -59,6 +60,7 @@ public class TableSchema implements DataCollectionSchema {
     private final Schema valueSchema;
     private final StructGenerator keyGenerator;
     private final StructGenerator valueGenerator;
+    private SamplingProcess samplingProcess;
 
     /**
      * Create an instance with the specified {@link Schema}s for the keys and values, and the functions that generate the
@@ -72,13 +74,15 @@ public class TableSchema implements DataCollectionSchema {
      * @param valueGenerator the function that converts a row into a single value object for Kafka Connect; may not be null but
      *            may return nulls
      */
-    public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator) {
+    public TableSchema(TableId id, Schema keySchema, StructGenerator keyGenerator, Envelope envelopeSchema, Schema valueSchema, StructGenerator valueGenerator,
+                       boolean isFromSnapshot) {
         this.id = id;
         this.keySchema = keySchema;
         this.envelopeSchema = envelopeSchema;
         this.valueSchema = valueSchema;
         this.keyGenerator = keyGenerator != null ? keyGenerator : (row) -> null;
         this.valueGenerator = valueGenerator != null ? valueGenerator : (row) -> null;
+        this.samplingProcess = isFromSnapshot ? SamplingProcess.SAMPLING_NOT_READY : SamplingProcess.SAMPLING_READY;
     }
 
     @Override
@@ -161,5 +165,32 @@ public class TableSchema implements DataCollectionSchema {
     @Override
     public String toString() {
         return "{ key : " + SchemaUtil.asString(keySchema()) + ", value : " + SchemaUtil.asString(valueSchema()) + " }";
+    }
+
+    public void setSamplingProcess(SamplingProcess samplingProcess) {
+        this.samplingProcess = samplingProcess;
+    }
+
+    public boolean isSamplingReady() {
+        return samplingProcess == SamplingProcess.SAMPLING_READY
+                || samplingProcess == SamplingProcess.SAMPLING;
+    }
+
+    public enum SamplingProcess implements EnumeratedValue {
+        SAMPLING_NOT_READY("sampling_not_ready"),
+        SAMPLING_READY("sampling_ready"),
+        SAMPLING("sampling"),
+        SAMPLING_COMPLETED("sampling_completed");
+
+        private final String value;
+
+        SamplingProcess(String value) {
+            this.value = value;
+        }
+
+        @Override
+        public String getValue() {
+            return value;
+        }
     }
 }

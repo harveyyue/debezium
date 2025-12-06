@@ -76,6 +76,7 @@ import io.debezium.pipeline.ErrorHandler;
 import io.debezium.pipeline.EventDispatcher;
 import io.debezium.pipeline.source.spi.StreamingChangeEventSource;
 import io.debezium.relational.TableId;
+import io.debezium.relational.TableSchema;
 import io.debezium.schema.SchemaChangeEvent;
 import io.debezium.time.Conversions;
 import io.debezium.util.Clock;
@@ -115,6 +116,7 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
     private final MySqlConnection connection;
     private final EventDispatcher<MySqlPartition, TableId> eventDispatcher;
     private final ErrorHandler errorHandler;
+    private final Map<TableId, Integer> tableIdSamplings = new HashMap<>();
 
     @SingleThreadAccess("binlog client thread")
     private Instant eventTimestamp;
@@ -753,7 +755,16 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
         final List<U> rows = rowsProvider.getRows(data);
         String changeType = operation.name();
 
-        if (tableId != null && taskContext.getSchema().schemaFor(tableId) != null) {
+        TableSchema tableSchema;
+        Integer samplingCount = 0;
+        if (tableId != null && (tableSchema = taskContext.getSchema().schemaFor(tableId)) != null) {
+            if (connectorConfig.isEnableStreamingSampling()) {
+                if (!(tableSchema.isSamplingReady()
+                        && (samplingCount = tableIdSamplings.getOrDefault(tableId, 0)) < connectorConfig.getSamplingCount())) {
+                    // Don't emit the data changes
+                    return;
+                }
+            }
             int count = 0;
             int numRows = rows.size();
             if (startingRowNumber < numRows) {
@@ -762,6 +773,17 @@ public class MySqlStreamingChangeEventSource implements StreamingChangeEventSour
                     offsetContext.event(tableId, eventTimestamp);
                     changeEmitter.emit(tableId, rows.get(row));
                     count++;
+                    if (connectorConfig.isEnableStreamingSampling()) {
+                        if (samplingCount == connectorConfig.getSamplingCount() - 1) {
+                            tableIdSamplings.remove(tableId);
+                            tableSchema.setSamplingProcess(TableSchema.SamplingProcess.SAMPLING_COMPLETED);
+                            break;
+                        }
+                        else {
+                            tableIdSamplings.put(tableId, ++samplingCount);
+                            tableSchema.setSamplingProcess(TableSchema.SamplingProcess.SAMPLING);
+                        }
+                    }
                 }
                 if (LOGGER.isDebugEnabled()) {
                     if (startingRowNumber != 0) {
