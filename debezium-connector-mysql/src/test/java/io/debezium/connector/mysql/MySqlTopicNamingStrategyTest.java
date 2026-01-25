@@ -22,6 +22,7 @@ import io.debezium.config.Field;
 import io.debezium.relational.TableId;
 import io.debezium.schema.DefaultRegexTopicNamingStrategy;
 import io.debezium.schema.DefaultTopicNamingStrategy;
+import io.debezium.schema.ShardTopicNamingStrategy;
 
 public class MySqlTopicNamingStrategyTest {
 
@@ -100,6 +101,29 @@ public class MySqlTopicNamingStrategyTest {
         final DefaultRegexTopicNamingStrategy byLogicalStrategy = new DefaultRegexTopicNamingStrategy(props);
         String dataChangeTopic = byLogicalStrategy.dataChangeTopic(tableId);
         assertThat(dataChangeTopic).isEqualTo("mysql-server-1.test_db.dbz_4180_all_shards");
+
+        // Test ShardTopicNamingStrategy
+        final ShardTopicNamingStrategy shardTopicNamingStrategy = new ShardTopicNamingStrategy(props);
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v5_region_b_20251207")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v5_region_b_all_shards");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v5_region_b_20251207_00")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v5_region_b_all_shards");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v5_region_b_20251207_00_01___000")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v5_region_b_all_shards");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v5_region_b_debug20251207_00")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v5_region_b_debug_all_shards");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v5_region_b")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v5_region_b");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v5_region_b_")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v5_region_b_");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v5_region_b__")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v5_region_b__");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.dbz_test")))
+                .isEqualTo("mysql-server-1.test_db.dbz_test");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v2_1")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v_all_shards");
+        assertThat(shardTopicNamingStrategy.dataChangeTopic(TableId.parse("test_db.my_table_v2")))
+                .isEqualTo("mysql-server-1.test_db.my_table_v_all_shards");
     }
 
     @Test
