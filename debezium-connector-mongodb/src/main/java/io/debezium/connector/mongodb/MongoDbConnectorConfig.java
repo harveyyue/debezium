@@ -5,6 +5,9 @@
  */
 package io.debezium.connector.mongodb;
 
+import static io.debezium.function.Predicates.not;
+
+import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -32,6 +35,7 @@ import io.debezium.connector.SourceInfoStructMaker;
 import io.debezium.data.Envelope;
 import io.debezium.schema.DefaultTopicNamingStrategy;
 import io.debezium.spi.schema.DataCollectionId;
+import io.debezium.util.Strings;
 
 /**
  * The configuration properties.
@@ -274,6 +278,61 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withValidation(Field::isBoolean)
             .withDescription("Whether invalid host names are allowed when using SSL. If true the connection will not prevent man-in-the-middle attacks");
 
+    public static final Field SSL_KEYSTORE = Field.create("mongodb.ssl.keystore")
+            .withDisplayName("SSL Keystore")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 1))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The location of the key store file. "
+                    + "This is optional and can be used for two-way authentication between the client and the MySQL Server.");
+
+    public static final Field SSL_KEYSTORE_PASSWORD = Field.create("mongodb.ssl.keystore.password")
+            .withDisplayName("SSL Keystore Password")
+            .withType(Type.PASSWORD)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 2))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The password for the key store file. "
+                    + "This is optional and only needed if 'mongodb.ssl.keystore' is configured.");
+
+    public static final Field SSL_KEYSTORE_TYPE = Field.create("mongodb.ssl.keystore.type")
+            .withDisplayName("SSL Keystore Type")
+            .withType(Type.STRING)
+            .withDefault("PKCS12")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 3))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The type of key store file. "
+                    + "This is optional and only needed if 'mongodb.ssl.keystore' is configured.");
+
+    public static final Field SSL_TRUSTSTORE = Field.create("mongodb.ssl.truststore")
+            .withDisplayName("SSL Truststore")
+            .withType(Type.STRING)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 4))
+            .withWidth(Width.LONG)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The location of the trust store file for the server certificate verification.");
+
+    public static final Field SSL_TRUSTSTORE_PASSWORD = Field.create("mongodb.ssl.truststore.password")
+            .withDisplayName("SSL Truststore Password")
+            .withType(Type.PASSWORD)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 5))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The password for the trust store file. "
+                    + "Used to check the integrity of the truststore, and unlock the truststore.");
+
+    public static final Field SSL_TRUSTSTORE_TYPE = Field.create("mongodb.ssl.truststore.type")
+            .withDisplayName("SSL Keystore Type")
+            .withType(Type.STRING)
+            .withDefault("PKCS12")
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED_SSL, 6))
+            .withWidth(Width.MEDIUM)
+            .withImportance(Importance.MEDIUM)
+            .withDescription("The type of key store file. "
+                    + "This is optional and only needed if 'mongodb.ssl.truststore' is configured.");
+
     public static final Field CONNECT_BACKOFF_INITIAL_DELAY_MS = Field.create("connect.backoff.initial.delay.ms")
             .withDisplayName("Initial delay before reconnection (ms)")
             .withType(Type.LONG)
@@ -458,6 +517,15 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
             .withDefault(0)
             .withDescription("The socket timeout, given in milliseconds. Defaults to 0 ms.");
 
+    public static final Field HEARTBEAT_FREQUENCY_MS = Field.create("mongodb.heartbeat.frequency.ms")
+            .withDisplayName("Heartbeat frequency ms")
+            .withType(Type.INT)
+            .withGroup(Field.createGroupEntry(Field.Group.CONNECTION_ADVANCED, 4))
+            .withWidth(Width.SHORT)
+            .withImportance(Importance.LOW)
+            .withDefault(10_000)
+            .withDescription("The frequency that the cluster monitor attempts to reach each server. Defaults to 10 seconds (10,000 ms).");
+
     protected static final Field TASK_ID = Field.create("mongodb.task.id")
             .withDescription("Internal use only")
             .withValidation(Field::isInteger)
@@ -507,7 +575,8 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
                     AUTO_DISCOVER_MEMBERS,
                     SSL_ENABLED,
                     SSL_ALLOW_INVALID_HOSTNAMES,
-                    CURSOR_MAX_AWAIT_TIME_MS)
+                    CURSOR_MAX_AWAIT_TIME_MS,
+                    HEARTBEAT_FREQUENCY_MS)
             .events(
                     DATABASE_INCLUDE_LIST,
                     DATABASE_EXCLUDE_LIST,
@@ -537,9 +606,46 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
     private CaptureMode captureMode;
     private final int snapshotMaxThreads;
     private final int cursorMaxAwaitTimeMs;
+    // private final ConnectionString connectionString;
+    private final String user;
+    private final String password;
+    private final String authSource;
+    // private final MongoDbAuthProvider authProvider;
+    private final boolean sslEnabled;
+    private final boolean sslAllowInvalidHostnames;
+    private final String sslKeyStore;
+    private final String sslKeyStorePassword;
+    private final String sslKeyStoreType;
+    private final String sslTrustStore;
+    private final String sslTrustStorePassword;
+    private final String sslTrustStoreType;
+    private final int connectTimeoutMs;
+    private final int heartbeatFrequencyMs;
+    private final int socketTimeoutMs;
+    private final int serverSelectionTimeoutMs;
 
     public MongoDbConnectorConfig(Configuration config) {
         super(config, config.getString(LOGICAL_NAME), DEFAULT_SNAPSHOT_FETCH_SIZE);
+
+        // Connection configuration
+        // this.authProvider = config.getInstance(MongoDbConnectorConfig.AUTH_PROVIDER_CLASS, MongoDbAuthProvider.class);
+        this.sslEnabled = config.getBoolean(MongoDbConnectorConfig.SSL_ENABLED);
+        this.sslAllowInvalidHostnames = config.getBoolean(MongoDbConnectorConfig.SSL_ALLOW_INVALID_HOSTNAMES);
+        this.sslKeyStore = config.getString(MongoDbConnectorConfig.SSL_KEYSTORE);
+        this.sslKeyStorePassword = config.getString(MongoDbConnectorConfig.SSL_KEYSTORE_PASSWORD);
+        this.sslKeyStoreType = config.getString(MongoDbConnectorConfig.SSL_KEYSTORE_TYPE);
+        this.sslTrustStore = config.getString(MongoDbConnectorConfig.SSL_TRUSTSTORE);
+        this.sslTrustStorePassword = config.getString(MongoDbConnectorConfig.SSL_TRUSTSTORE_PASSWORD);
+        this.sslTrustStoreType = config.getString(MongoDbConnectorConfig.SSL_TRUSTSTORE_TYPE);
+
+        this.connectTimeoutMs = config.getInteger(MongoDbConnectorConfig.CONNECT_TIMEOUT_MS);
+        this.heartbeatFrequencyMs = config.getInteger(MongoDbConnectorConfig.HEARTBEAT_FREQUENCY_MS);
+        this.socketTimeoutMs = config.getInteger(MongoDbConnectorConfig.SOCKET_TIMEOUT_MS);
+        this.serverSelectionTimeoutMs = config.getInteger(MongoDbConnectorConfig.SERVER_SELECTION_TIMEOUT_MS);
+        // this.connectionString = resolveConnectionString(config);
+        this.user = config.getString(MongoDbConnectorConfig.USER);
+        this.password = config.getString(MongoDbConnectorConfig.PASSWORD);
+        this.authSource = config.getString(MongoDbConnectorConfig.AUTH_SOURCE);
 
         String snapshotModeValue = config.getString(MongoDbConnectorConfig.SNAPSHOT_MODE);
         this.snapshotMode = SnapshotMode.parse(snapshotModeValue, MongoDbConnectorConfig.SNAPSHOT_MODE.defaultValueAsString());
@@ -629,6 +735,70 @@ public class MongoDbConnectorConfig extends CommonConnectorConfig {
      */
     public CaptureMode getCaptureMode() {
         return captureMode;
+    }
+
+    public String getUser() {
+        return user;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public String getAuthSource() {
+        return authSource;
+    }
+
+    public boolean isSslEnabled() {
+        return sslEnabled;
+    }
+
+    public boolean isSslAllowInvalidHostnames() {
+        return sslAllowInvalidHostnames;
+    }
+
+    public Optional<Path> getSslKeyStore() {
+        return Optional.ofNullable(sslKeyStore)
+                .filter(not(Strings::isNullOrBlank))
+                .map(Path::of);
+    }
+
+    public char[] getSslKeyStorePassword() {
+        return sslKeyStorePassword != null ? sslKeyStorePassword.toCharArray() : null;
+    }
+
+    public String getSslKeyStoreType() {
+        return sslKeyStoreType;
+    }
+
+    public Optional<Path> getSslTrustStore() {
+        return Optional.ofNullable(sslTrustStore)
+                .filter(not(Strings::isNullOrBlank))
+                .map(Path::of);
+    }
+
+    public char[] getSslTrustStorePassword() {
+        return sslTrustStorePassword != null ? sslTrustStorePassword.toCharArray() : null;
+    }
+
+    public String getSslTrustStoreType() {
+        return sslTrustStoreType;
+    }
+
+    public int getConnectTimeoutMs() {
+        return connectTimeoutMs;
+    }
+
+    public int getHeartbeatFrequencyMs() {
+        return heartbeatFrequencyMs;
+    }
+
+    public int getSocketTimeoutMs() {
+        return socketTimeoutMs;
+    }
+
+    public int getServerSelectionTimeoutMs() {
+        return serverSelectionTimeoutMs;
     }
 
     public int getCursorMaxAwaitTime() {

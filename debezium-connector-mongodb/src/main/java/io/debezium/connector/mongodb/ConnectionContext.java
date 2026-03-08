@@ -27,6 +27,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.connection.ClusterDescription;
 
 import io.debezium.config.Configuration;
+import io.debezium.connector.mongodb.connection.client.MongoDbClientFactory;
 import io.debezium.function.BlockingConsumer;
 import io.debezium.util.Clock;
 import io.debezium.util.DelayStrategy;
@@ -76,7 +77,10 @@ public class ConnectionContext implements AutoCloseable {
         }
         if (useSSL) {
             clientBuilder.settings().applyToSslSettings(
-                    builder -> builder.enabled(true).invalidHostNameAllowed(sslAllowInvalidHostnames));
+                    builder -> builder
+                            .enabled(true)
+                            .invalidHostNameAllowed(sslAllowInvalidHostnames)
+                            .context(MongoDbClientFactory.createSSLContext(new MongoDbConnectorConfig(config))));
         }
 
         clientBuilder.settings()
