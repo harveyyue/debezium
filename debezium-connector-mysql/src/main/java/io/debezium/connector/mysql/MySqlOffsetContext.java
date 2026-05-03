@@ -190,6 +190,7 @@ public class MySqlOffsetContext extends CommonOffsetContext<SourceInfo> {
             offsetContext.setInitialSkips(longOffsetValue(offset, EVENTS_TO_SKIP_OFFSET_KEY),
                     (int) longOffsetValue(offset, SourceInfo.BINLOG_ROW_IN_EVENT_OFFSET_KEY));
             offsetContext.setCompletedGtidSet((String) offset.get(GTID_SET_KEY)); // may be null
+            offsetContext.sourceInfo.startGtid(offsetContext.currentGtidSet); // may be null
             return offsetContext;
         }
 
