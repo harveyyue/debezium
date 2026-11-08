@@ -7,11 +7,12 @@ package io.debezium.relational.mapping;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.kafka.connect.errors.ConnectException;
 
@@ -315,23 +316,29 @@ public class ColumnMappers {
      * @return the mapping function, or null if there is no mapping function
      */
     public ValueConverter mappingConverterFor(TableId tableId, Column column) {
-        ColumnMapper mapper = mapperFor(tableId, column);
-        return mapper != null ? mapper.create(column) : null;
+        return rules.stream()
+                .filter(rule -> rule.matches(tableId, column))
+                .map(rule -> rule.mapper)
+                .distinct()
+                .map(mapper -> mapper.create(column))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
     }
 
     /**
-     * Get the value mapping function for the given column.
+     * Get the value mapping functions for the given column.
      *
      * @param tableId the identifier of the table to which the column belongs; may not be null
      * @param column the column; may not be null
-     * @return the mapping function, or null if there is no mapping function
+     * @return the mapping functions
      */
-    public ColumnMapper mapperFor(TableId tableId, Column column) {
-        Optional<MapperRule> matchingRule = rules.stream().filter(rule -> rule.matches(tableId, column)).findFirst();
-        if (matchingRule.isPresent()) {
-            return matchingRule.get().mapper;
-        }
-        return null;
+    public List<ColumnMapper> mappingFor(TableId tableId, Column column) {
+        return rules.stream()
+                .filter(rule -> rule.matches(tableId, column))
+                .map(rule -> rule.mapper)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     @Immutable

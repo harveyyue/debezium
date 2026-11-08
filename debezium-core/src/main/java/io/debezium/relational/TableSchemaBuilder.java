@@ -6,6 +6,7 @@
 package io.debezium.relational;
 
 import java.sql.Types;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -116,7 +117,7 @@ public class TableSchemaBuilder {
      * @param table the table definition; may not be null
      * @param filter the filter that specifies whether columns in the table should be included; may be null if all columns
      *            are to be included
-     * @param mappers the mapping functions for columns; may be null if none of the columns are to be mapped to different values
+     * @param mappers the mapping functions for columns; never null
      * @return the table schema that can be used for sending rows of data for this table to Kafka Connect; never null
      */
     public TableSchema create(TopicNamingStrategy topicNamingStrategy, Table table, ColumnNameFilter filter, ColumnMappers mappers, KeyMapper keysMapper) {
@@ -136,7 +137,7 @@ public class TableSchemaBuilder {
 
         Key tableKey = new Key.Builder(table).customKeyMapper(keysMapper).build();
         tableKey.keyColumns().forEach(column -> {
-            addField(keySchemaBuilder, table, column, null);
+            addField(keySchemaBuilder, table, column, Collections.emptyList());
             hasPrimaryKey.set(true);
         });
 
@@ -144,8 +145,8 @@ public class TableSchemaBuilder {
                 .stream()
                 .filter(column -> filter == null || filter.matches(tableId.catalog(), tableId.schema(), tableId.table(), column.name()))
                 .forEach(column -> {
-                    ColumnMapper mapper = mappers == null ? null : mappers.mapperFor(tableId, column);
-                    addField(valSchemaBuilder, table, column, mapper);
+                    List<ColumnMapper> columnMappers = mappers == null ? Collections.emptyList() : mappers.mappingFor(tableId, column);
+                    addField(valSchemaBuilder, table, column, columnMappers);
                 });
 
         Schema valSchema = valSchemaBuilder.optional().build();
@@ -365,9 +366,9 @@ public class TableSchemaBuilder {
      * @param builder the schema builder; never null
      * @param table the table definition; never null
      * @param column the column definition
-     * @param mapper the mapping function for the column; may be null if the columns is not to be mapped to different values
+     * @param mappers the mapping functions for the column; may not be null
      */
-    protected void addField(SchemaBuilder builder, Table table, Column column, ColumnMapper mapper) {
+    protected void addField(SchemaBuilder builder, Table table, Column column, List<ColumnMapper> mappers) {
         final Object defaultValue = column.defaultValueExpression()
                 .flatMap(e -> defaultValueConverter.parseDefaultValue(column, e))
                 .orElse(null);
@@ -376,7 +377,7 @@ public class TableSchemaBuilder {
                 .orElse(valueConverterProvider.schemaBuilder(column));
 
         if (fieldBuilder != null) {
-            if (mapper != null) {
+            for (ColumnMapper mapper : mappers) {
                 // Let the mapper add properties to the schema ...
                 mapper.alterFieldSchema(column, fieldBuilder);
             }
